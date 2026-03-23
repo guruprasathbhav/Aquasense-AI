@@ -1,0 +1,2435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AquaSense AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --ink: #020d12;
+  --surface: #061820;
+  --card: #082030;
+  --card2: #0a2535;
+  --rim: #0f3d52;
+  --rim2: #155870;
+  --water: #22d3ee;
+  --water-dim: #0891b2;
+  --teal: #06b6d4;
+  --emerald: #10b981;
+  --amber: #f59e0b;
+  --rose: #f43f5e;
+  --slate: #94a3b8;
+  --muted: #2e5566;
+  --text: #e0f7fa;
+  --white: #f0fdff;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: linear-gradient(160deg, #020d12 0%, #061c2a 50%, #041520 100%);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── animated water bg ── */
+.bg-canvas {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.bg-blob {
+  position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.07;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+.bg-blob:nth-child(1) { width:600px;height:600px;background:var(--teal);top:-100px;left:-100px;animation-duration:20s; }
+.bg-blob:nth-child(2) { width:500px;height:500px;background:#0369a1;bottom:-100px;right:-50px;animation-duration:15s;animation-delay:-7s; }
+.bg-blob:nth-child(3) { width:350px;height:350px;background:var(--emerald);top:50%;left:40%;animation-duration:25s;animation-delay:-3s; }
+@keyframes drift { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(40px,30px) scale(1.1)} }
+
+/* grid lines */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(14,165,233,0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(14,165,233,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ── layout ── */
+.wrap { position: relative; z-index: 1; max-width: 1200px; width: 100%; margin: 0 auto; padding: 20px 20px 48px; }
+
+/* ── header ── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: clamp(12px,2vw,22px) clamp(16px,2.5vw,32px); margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(2,13,18,0.92) 0%, rgba(6,24,32,0.95) 100%);
+  border: 1px solid rgba(34,211,238,0.18);
+  border-radius: 20px;
+  backdrop-filter: blur(24px);
+  box-shadow: 0 4px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(34,211,238,0.1);
+  animation: slideDown 0.6s cubic-bezier(.16,1,.3,1) both;
+  position: relative; overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34,211,238,0.7), rgba(6,182,212,0.7), transparent);
+  pointer-events: none;
+}
+@keyframes slideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
+
+.brand { display: flex; align-items: center; gap: 16px; }
+.brand-orb {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--water), var(--teal), var(--emerald));
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  box-shadow: 0 0 30px rgba(14,165,233,0.4);
+  animation: orbPulse 3s ease-in-out infinite;
+}
+@keyframes orbPulse {
+  0%,100%{box-shadow:0 0 30px rgba(14,165,233,0.4)}
+  50%{box-shadow:0 0 50px rgba(14,165,233,0.65)}
+}
+.brand-name {
+  font-family: var(--font-display); font-size: clamp(1rem, 2vw, 1.5rem); font-weight: 800;
+  background: linear-gradient(90deg, var(--water), #67e8f9);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+.brand-tagline { font-family: var(--font-mono); font-size: 0.65rem; color: var(--slate); letter-spacing: 2px; margin-top: 1px; }
+
+.header-badges { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.badge {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 20px;
+  font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 1px;
+  border: 1px solid; transition: all 0.2s;
+}
+.badge-live { border-color: rgba(16,185,129,0.4); color: var(--emerald); background: rgba(16,185,129,0.07); }
+.badge-ai { border-color: rgba(14,165,233,0.4); color: var(--water); background: rgba(14,165,233,0.07); }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; animation: blink 2s infinite; }
+.badge-dot.green { background: var(--emerald); }
+.badge-dot.blue { background: var(--water); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── section title ── */
+.sec-label {
+  font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 3px;
+  color: var(--water); text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+}
+.sec-label::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--rim),transparent); }
+
+/* ── input card ── */
+.input-card {
+  background: linear-gradient(160deg, rgba(6,24,32,0.92) 0%, rgba(2,13,18,0.97) 100%);
+  border: 1px solid var(--rim);
+  border-radius: 18px; padding: clamp(18px,2.5vw,32px);
+  margin-bottom: 20px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(34,211,238,0.06);
+  animation: fadeUp 0.7s cubic-bezier(.16,1,.3,1) 0.1s both;
+  position: relative; overflow: hidden;
+}
+.input-card::after {
+  content: '';
+  position: absolute; bottom: -80px; right: -80px;
+  width: 250px; height: 250px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(14,165,233,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+.sensor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+@media(max-width:600px){ .sensor-row{grid-template-columns:1fr;} }
+
+.sensor-box {
+  position: relative; border-radius: 14px; overflow: hidden;
+  background: rgba(5,8,15,0.5);
+  border: 1px solid var(--rim);
+  padding: 20px 22px 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  cursor: text;
+}
+.sensor-box::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  opacity: 0; transition: opacity 0.3s;
+}
+.sensor-box.ph::before { background: linear-gradient(90deg, var(--emerald), var(--teal)); }
+.sensor-box.tds::before { background: linear-gradient(90deg, var(--water), var(--amber)); }
+.sensor-box:focus-within { border-color: var(--rim2); box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+.sensor-box:focus-within::before { opacity: 1; }
+
+.sensor-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.sensor-name { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 2px; color: var(--slate); text-transform: uppercase; }
+.sensor-range {
+  font-family: var(--font-mono); font-size: 0.6rem; padding: 3px 8px;
+  border-radius: 6px; border: 1px solid var(--rim2); color: var(--muted);
+  background: rgba(255,255,255,0.03);
+}
+.sensor-field {
+  width: 100%; background: transparent; border: none; outline: none;
+  font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2.4rem); font-weight: 700;
+  color: var(--white); line-height: 1; padding: 4px 0;
+}
+.sensor-field::placeholder { color: var(--muted); font-size: clamp(1.1rem, 2.5vw, 1.8rem); font-weight: 300; }
+.sensor-unit-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.sensor-unit { font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted); }
+.sensor-hint-chip {
+  font-size: 0.6rem; padding: 2px 8px; border-radius: 6px;
+  font-family: var(--font-mono);
+}
+.chip-good { background: rgba(16,185,129,0.1); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2); }
+.chip-warn { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+.chip-info { background: rgba(14,165,233,0.1); color: var(--water); border: 1px solid rgba(14,165,233,0.2); }
+
+/* source pills */
+.source-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.pill {
+  padding: 8px 16px; border-radius: 30px; cursor: pointer;
+  font-size: 0.78rem; font-weight: 500;
+  border: 1px solid var(--rim);
+  background: rgba(255,255,255,0.02);
+  color: var(--slate);
+  transition: all 0.2s; user-select: none;
+}
+.pill:hover { border-color: var(--rim2); color: var(--text); }
+.pill.on { background: rgba(14,165,233,0.12); border-color: var(--water); color: var(--water); font-weight: 600; }
+
+/* presets row */
+.presets-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.preset-btn {
+  padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  font-size: 0.72rem; font-family: var(--font-mono); letter-spacing: 1px;
+  border: 1px solid var(--rim); background: transparent; color: var(--slate);
+  transition: all 0.2s;
+}
+.preset-btn:hover { border-color: var(--teal); color: var(--teal); background: rgba(6,182,212,0.06); }
+
+/* analyze button */
+.btn-analyze {
+  width: 100%; padding: 20px; border: none; cursor: pointer; border-radius: 16px;
+  font-family: var(--font-display); font-size: 1rem; font-weight: 700; letter-spacing: 3px;
+  color: var(--white); position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #044e6e, #0891b2, #06b6d4);
+  box-shadow: 0 8px 40px rgba(34,211,238,0.3), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: transform 0.25s cubic-bezier(.16,1,.3,1), box-shadow 0.25s;
+}
+.btn-analyze::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: sweep 2.5s infinite;
+}
+@keyframes sweep { to { transform: translateX(200%); } }
+.btn-analyze:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(14,165,233,0.45); }
+.btn-analyze:active { transform: translateY(0); }
+.btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── gauges ── */
+.gauge-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+@media(max-width:600px){ .gauge-row{grid-template-columns:1fr;} }
+
+.gauge-card {
+  border-radius: 18px; padding: clamp(16px,2vw,28px) clamp(14px,1.5vw,24px);
+  background: linear-gradient(160deg, rgba(14,22,40,0.9) 0%, rgba(11,17,32,0.95) 100%);
+  border: 1px solid var(--rim);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; position: relative; overflow: hidden;
+  animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) both;
+}
+.gauge-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(14,165,233,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.gauge-card:nth-child(2) { animation-delay: 0.08s; }
+
+.gc-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 3px; color: var(--slate); text-transform: uppercase; margin-bottom: 18px; }
+.gc-ring { position: relative; width: clamp(100px,12vw,140px); height: clamp(100px,12vw,140px); margin-bottom: 14px; }
+.gc-ring svg { width: clamp(100px,12vw,140px); height: clamp(100px,12vw,140px); transform: rotate(-90deg); }
+.gc-track { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 10; }
+.gc-arc { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 1.2s cubic-bezier(.16,1,.3,1); }
+.gc-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.gc-value { font-family: var(--font-display); font-size: clamp(1.3rem, 2.5vw, 2rem); font-weight: 800; line-height: 1; }
+.gc-unit { font-family: var(--font-mono); font-size: 0.62rem; color: var(--slate); margin-top: 3px; }
+.gc-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px; font-size: 0.72rem;
+  font-family: var(--font-mono); letter-spacing: 1px; margin-top: 4px;
+}
+.s-safe   { background: rgba(16,185,129,0.1); color: var(--emerald); border: 1px solid rgba(16,185,129,0.25); }
+.s-mild   { background: rgba(245,158,11,0.1);  color: var(--amber);   border: 1px solid rgba(245,158,11,0.25); }
+.s-poor   { background: rgba(244,63,94,0.1);   color: var(--rose);    border: 1px solid rgba(244,63,94,0.25); }
+.s-crit   { background: rgba(244,63,94,0.15);  color: #ff6188;        border: 1px solid rgba(244,63,94,0.4); }
+
+.wqi-bar-card {
+  border-radius: 18px; padding: clamp(16px,2vw,24px) clamp(18px,2.5vw,28px);
+  background: rgba(14,22,40,0.8);
+  border: 1px solid var(--rim);
+  margin-bottom: 20px;
+  animation: fadeUp 0.6s cubic-bezier(.16,1,.3,1) 0.15s both;
+}
+.wqi-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.wqi-score-box { min-width: 90px; }
+.wqi-num { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 800; line-height: 1; }
+.wqi-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 2px; color: var(--slate); }
+.wqi-track-wrap { flex: 1; min-width: 200px; }
+.wqi-track-label { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); margin-bottom: 8px; }
+.wqi-track {
+  height: 10px; border-radius: 10px;
+  background: linear-gradient(90deg, var(--rose) 0%, var(--amber) 40%, var(--emerald) 100%);
+  position: relative; overflow: visible;
+}
+.wqi-needle {
+  position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%;
+  background: white; border: 3px solid var(--ink); box-shadow: 0 0 12px rgba(255,255,255,0.5);
+  transform: translate(-50%,-50%);
+  transition: left 1.2s cubic-bezier(.16,1,.3,1);
+}
+.wqi-verdict { font-size: 0.85rem; font-weight: 500; margin-top: 10px; }
+
+/* ── AI OUTPUT ── */
+.ai-card {
+  border-radius: 18px;
+  background: rgba(14,22,40,0.8);
+  border: 1px solid var(--rim);
+  margin-bottom: 20px;
+  overflow: hidden;
+  animation: fadeUp 0.7s cubic-bezier(.16,1,.3,1) 0.2s both;
+}
+.ai-header {
+  display: flex; align-items: center; gap: 14px;
+  padding: clamp(14px,1.8vw,20px) clamp(16px,2.5vw,28px);
+  border-bottom: 1px solid var(--rim);
+  background: rgba(14,165,233,0.04);
+}
+.ai-orb {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: linear-gradient(135deg, #0369a1, #0891b2);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  box-shadow: 0 0 20px rgba(14,165,233,0.35); flex-shrink: 0;
+}
+.ai-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--white); }
+.ai-sub { font-family: var(--font-mono); font-size: 0.62rem; color: var(--slate); letter-spacing: 1px; margin-top: 2px; }
+.ai-dots { display: flex; gap: 4px; margin-left: auto; }
+.ai-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--water); animation: bounce 1.2s infinite; }
+.ai-dot:nth-child(2){animation-delay:.15s} .ai-dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-6px);opacity:1} }
+
+.ai-body { padding: clamp(16px,2.5vw,28px); }
+
+/* output blocks */
+.out-block { margin-bottom: 22px; }
+.out-block:last-child { margin-bottom: 0; }
+.out-title {
+  font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 3px;
+  color: var(--water); text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.out-title .ot-icon { font-size: 1rem; }
+.assessment-text { font-size: 0.92rem; line-height: 1.85; color: var(--text); }
+.assessment-text strong { color: var(--white); font-weight: 600; }
+.assessment-text .hl-good { color: var(--emerald); font-weight: 600; font-family: var(--font-mono); }
+.assessment-text .hl-warn { color: var(--amber); font-weight: 600; font-family: var(--font-mono); }
+.assessment-text .hl-bad  { color: var(--rose);  font-weight: 600; font-family: var(--font-mono); }
+
+/* steps */
+.step-list { display: flex; flex-direction: column; gap: 10px; }
+.step {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 11px 14px; border-radius: 10px;
+  background: rgba(5,8,15,0.4);
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: border-color 0.2s, background 0.2s;
+}
+.step:hover { border-color: var(--rim2); background: rgba(14,165,233,0.04); }
+.step-badge {
+  min-width: 32px; height: 32px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 0.75rem; font-weight: 800;
+  flex-shrink: 0;
+}
+.sb1 { background: rgba(244,63,94,0.15); color: var(--rose); border: 1px solid rgba(244,63,94,0.3); }
+.sb2 { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+.sb3 { background: rgba(245,158,11,0.15); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+.sb4 { background: rgba(14,165,233,0.15); color: var(--water); border: 1px solid rgba(14,165,233,0.3); }
+.sb5 { background: rgba(16,185,129,0.15); color: var(--emerald); border: 1px solid rgba(16,185,129,0.3); }
+.sb6 { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+.sb7 { background: rgba(6,182,212,0.15); color: var(--teal); border: 1px solid rgba(6,182,212,0.3); }
+.step-info {}
+.step-name { font-weight: 600; font-size: 0.88rem; color: var(--white); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap:wrap; }
+.step-tag {
+  font-size: 0.58rem; padding: 2px 7px; border-radius: 5px;
+  font-family: var(--font-mono); letter-spacing: 1px; font-weight: 400;
+}
+.t-chem { background: rgba(244,63,94,0.1); color: #fb7185; border:1px solid rgba(244,63,94,0.2); }
+.t-phys { background: rgba(14,165,233,0.1); color: var(--water); border:1px solid rgba(14,165,233,0.2); }
+.t-bio  { background: rgba(16,185,129,0.1); color: var(--emerald); border:1px solid rgba(16,185,129,0.2); }
+.t-elec { background: rgba(139,92,246,0.1); color: #a78bfa; border:1px solid rgba(139,92,246,0.2); }
+.step-desc { font-size: 0.8rem; color: var(--slate); line-height: 1.65; }
+
+/* use cases */
+.uc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 8px; }
+.uc-tile {
+  padding: 16px; border-radius: 14px;
+  background: rgba(5,8,15,0.5);
+  border: 1px solid var(--rim);
+  display: flex; align-items: flex-start; gap: 12px;
+  transition: all 0.2s;
+}
+.uc-tile:hover { border-color: var(--rim2); background: rgba(16,185,129,0.04); transform: translateY(-2px); }
+.uc-emoji { font-size: 1.6rem; line-height: 1; }
+.uc-text strong { font-size: 0.82rem; color: var(--white); display: block; margin-bottom: 2px; }
+.uc-text span { font-size: 0.72rem; color: var(--slate); line-height: 1.4; }
+
+/* table */
+.tbl-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--rim); }
+table { width: 100%; border-collapse: collapse; }
+thead tr { background: rgba(14,165,233,0.06); }
+th { padding: 12px 16px; text-align: left; font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 2px; color: var(--water); text-transform: uppercase; border-bottom: 1px solid var(--rim); white-space:nowrap; }
+td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.82rem; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(14,165,233,0.025); }
+.tv-good { color: var(--emerald); font-family: var(--font-mono); font-weight: 600; }
+.tv-warn { color: var(--amber); font-family: var(--font-mono); font-weight: 600; }
+.tv-bad  { color: var(--rose);  font-family: var(--font-mono); font-weight: 600; }
+
+/* insight box */
+.insight {
+  padding: 14px 18px; border-radius: 10px;
+  background: rgba(5,8,15,0.4);
+  border: 1px solid var(--rim);
+  border-left: 3px solid var(--water);
+  font-size: 0.82rem; line-height: 1.75; color: var(--slate);
+}
+.insight strong { color: var(--text); }
+
+/* alert banner */
+.alert {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 18px; border-radius: 12px; margin-bottom: 20px; font-size: 0.83rem;
+  line-height: 1.6; animation: fadeUp 0.4s ease-out;
+}
+.alert-icon { font-size: 1.2rem; flex-shrink:0; margin-top:1px; }
+.a-warn { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+.a-good { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
+.a-bad  { background: rgba(244,63,94,0.08);  border: 1px solid rgba(244,63,94,0.3);  color: #fda4af; }
+
+/* loading overlay */
+#loader {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(5,8,15,0.88); backdrop-filter: blur(8px);
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+#loader.on { display: flex; }
+.loader-ring {
+  width: 72px; height: 72px; border-radius: 50%;
+  border: 3px solid rgba(14,165,233,0.12);
+  border-top-color: var(--water); border-right-color: var(--teal);
+  animation: spin 0.9s linear infinite;
+  box-shadow: 0 0 30px rgba(14,165,233,0.3);
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loader-label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 3px; color: var(--water); }
+.loader-sub { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); }
+
+/* results hidden by default */
+#results { display: none; }
+#results.on { display: block; }
+
+
+/* ── scale selector ── */
+.scale-section { margin-bottom: 24px; }
+.scale-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media(max-width:580px){ .scale-cards { grid-template-columns: 1fr; } }
+
+.scale-card {
+  position: relative; border-radius: 16px; padding: 18px 20px;
+  background: rgba(5,8,15,0.5);
+  border: 1px solid var(--rim);
+  cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+.scale-card::before {
+  content: ''; position: absolute; inset: 0; opacity: 0;
+  transition: opacity 0.25s;
+}
+.scale-card.large::before { background: linear-gradient(135deg, rgba(14,165,233,0.07), rgba(6,182,212,0.04)); }
+.scale-card.small::before { background: linear-gradient(135deg, rgba(16,185,129,0.07), rgba(52,211,153,0.04)); }
+.scale-card:hover { border-color: var(--rim2); }
+.scale-card:hover::before { opacity: 1; }
+.scale-card.on.large { border-color: var(--water); box-shadow: 0 0 0 1px rgba(14,165,233,0.15), 0 8px 30px rgba(14,165,233,0.12); }
+.scale-card.on.small { border-color: var(--emerald); box-shadow: 0 0 0 1px rgba(16,185,129,0.15), 0 8px 30px rgba(16,185,129,0.12); }
+.scale-card.on::before { opacity: 1; }
+
+.sc-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.sc-icon { font-size: 1.8rem; line-height: 1; }
+.sc-radio {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--rim2); background: transparent;
+  transition: all 0.2s; flex-shrink: 0; margin-top: 2px;
+  position: relative;
+}
+.scale-card.on.large .sc-radio { border-color: var(--water); background: var(--water); box-shadow: 0 0 8px rgba(14,165,233,0.5); }
+.scale-card.on.small .sc-radio { border-color: var(--emerald); background: var(--emerald); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
+.sc-radio::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%) scale(0);
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ink);
+  transition: transform 0.15s;
+}
+.scale-card.on .sc-radio::after { transform: translate(-50%,-50%) scale(1); }
+
+.sc-title { font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+.sc-sub { font-family: var(--font-mono); font-size: 0.62rem; color: var(--slate); letter-spacing: 1px; margin-bottom: 10px; }
+.sc-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.sc-tag {
+  font-family: var(--font-mono); font-size: 0.58rem; padding: 2px 8px;
+  border-radius: 5px; letter-spacing: 1px;
+}
+.sc-tag.blue { background: rgba(14,165,233,0.1); color: var(--water); border: 1px solid rgba(14,165,233,0.2); }
+.sc-tag.green { background: rgba(16,185,129,0.1); color: var(--emerald); border: 1px solid rgba(16,185,129,0.2); }
+.sc-tag.amber { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+
+
+/* ══ FEATURE: VERDICT CARD ══ */
+.verdict-card {
+  border-radius: 18px; padding: clamp(16px,2.5vw,28px);
+  margin-bottom: 24px;
+  position: relative; overflow: hidden;
+  animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) both;
+  border: 1px solid var(--rim);
+}
+.verdict-card.vc-safe   { background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(14,22,40,0.95)); border-color: rgba(16,185,129,0.3); }
+.verdict-card.vc-warn   { background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(14,22,40,0.95)); border-color: rgba(245,158,11,0.3); }
+.verdict-card.vc-danger { background: linear-gradient(135deg, rgba(244,63,94,0.1), rgba(14,22,40,0.95)); border-color: rgba(244,63,94,0.35); }
+.verdict-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+.verdict-icon { font-size: 3rem; line-height: 1; }
+.verdict-text {}
+.verdict-headline { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; line-height: 1.2; margin-bottom: 6px; }
+.verdict-sub { font-size: 0.82rem; color: var(--slate); }
+.verdict-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:500px){ .verdict-meters { grid-template-columns: 1fr; } }
+.vm-item { background: rgba(0,0,0,0.25); border-radius: 10px; padding: 12px 14px; }
+.vm-label { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.vm-bar-track { height: 6px; border-radius: 6px; background: rgba(255,255,255,0.07); overflow: hidden; }
+.vm-bar-fill { height: 100%; border-radius: 6px; transition: width 1.2s cubic-bezier(.16,1,.3,1); }
+.vm-val { font-family: var(--font-display); font-size: 0.85rem; font-weight: 700; margin-top: 6px; }
+
+/* ══ FEATURE: COST CALCULATOR ══ */
+.cost-card {
+  border-radius: 18px; padding: clamp(16px,2.5vw,28px);
+  background: linear-gradient(160deg, rgba(14,22,40,0.9), rgba(11,17,32,0.95));
+  border: 1px solid var(--rim);
+  margin-bottom: 20px;
+  animation: fadeUp 0.5s cubic-bezier(.16,1,.3,1) 0.1s both;
+}
+.cost-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; margin-bottom: 16px; }
+.cost-tile {
+  background: rgba(5,8,15,0.5); border: 1px solid var(--rim); border-radius: 14px;
+  padding: 16px; text-align: center; transition: all 0.2s;
+}
+.cost-tile:hover { border-color: var(--rim2); background: rgba(14,165,233,0.04); }
+.cost-tile-icon { font-size: 1.6rem; margin-bottom: 8px; }
+.cost-tile-val { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; color: var(--water); line-height: 1; }
+.cost-tile-label { font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted); letter-spacing: 1px; margin-top: 4px; text-transform: uppercase; }
+.cost-vol-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.cost-vol-input {
+  flex: 1; min-width: 120px;
+  background: rgba(5,8,15,0.5); border: 1px solid var(--rim); border-radius: 10px;
+  padding: 10px 14px; color: var(--white); outline: none;
+  font-family: var(--font-display); font-size: 1.2rem; font-weight: 700;
+  transition: border-color 0.2s;
+}
+.cost-vol-input:focus { border-color: var(--water); }
+.cost-calc-btn {
+  padding: 10px 22px; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--water-dim), var(--teal));
+  color: white; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 2px;
+  font-weight: 600; transition: all 0.2s;
+}
+.cost-calc-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(14,165,233,0.3); }
+.cost-result { margin-top: 16px; padding: 14px; border-radius: 12px; background: rgba(14,165,233,0.06); border: 1px solid rgba(14,165,233,0.15); font-size: 0.85rem; line-height: 1.8; display: none; }
+.cost-result.on { display: block; }
+
+/* ══ FEATURE: SCAN HISTORY ══ */
+.history-card {
+  border-radius: 18px; padding: clamp(16px,2.5vw,28px);
+  background: linear-gradient(160deg, rgba(14,22,40,0.9), rgba(11,17,32,0.95));
+  border: 1px solid var(--rim);
+  margin-bottom: 20px;
+}
+.history-empty {
+  text-align: center; padding: 32px;
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted);
+  letter-spacing: 2px;
+}
+.history-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+.history-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px; border-radius: 12px;
+  background: rgba(5,8,15,0.4); border: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer; transition: all 0.2s;
+}
+.history-item:hover { border-color: var(--rim2); background: rgba(14,165,233,0.04); }
+.hi-num { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); min-width: 24px; }
+.hi-source { font-size: 0.82rem; color: var(--text); flex: 1; font-weight: 500; }
+.hi-vals { display: flex; gap: 8px; }
+.hi-val {
+  font-family: var(--font-mono); font-size: 0.65rem;
+  padding: 3px 8px; border-radius: 6px;
+}
+.hi-ph-good  { background: rgba(16,185,129,0.1); color: var(--emerald); }
+.hi-ph-warn  { background: rgba(245,158,11,0.1);  color: var(--amber); }
+.hi-ph-bad   { background: rgba(244,63,94,0.1);   color: var(--rose); }
+.hi-tds-good { background: rgba(14,165,233,0.1);  color: var(--water); }
+.hi-tds-warn { background: rgba(245,158,11,0.1);  color: var(--amber); }
+.hi-tds-bad  { background: rgba(244,63,94,0.1);   color: var(--rose); }
+.hi-wqi { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); }
+.hi-time { font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted); }
+.history-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+.hist-clear-btn {
+  padding: 5px 12px; border-radius: 7px; border: 1px solid var(--rim);
+  background: transparent; color: var(--muted); font-family: var(--font-mono);
+  font-size: 0.6rem; letter-spacing: 1px; cursor: pointer; transition: all 0.2s;
+}
+.hist-clear-btn:hover { border-color: var(--rose); color: var(--rose); }
+.hist-count { font-family: var(--font-mono); font-size: 0.62rem; color: var(--muted); letter-spacing: 1px; }
+
+/* ── responsive laptop / tablet ── */
+@media (max-width: 1024px) {
+  .wrap { padding: 16px 16px 40px; }
+  .header { padding: 16px 20px; margin-bottom: 20px; }
+  .brand-tagline { display: none; }
+  .input-card { padding: 20px; }
+  .gauge-card { padding: 18px 14px; }
+  .ai-body { padding: 18px; }
+  .footer-stats { flex-wrap: wrap; }
+  .fstat { padding: 10px 16px; }
+}
+@media (max-width: 900px) {
+  .header { flex-wrap: wrap; gap: 10px; }
+  .header-badges { width: 100%; justify-content: flex-start; }
+  .gauge-row { grid-template-columns: 1fr 1fr; }
+  .verdict-meters { grid-template-columns: 1fr 1fr; }
+  .scale-cards { grid-template-columns: 1fr 1fr; }
+  .footer-stats { display: none; }
+}
+@media (max-width: 768px) {
+  .brand-orb { width: 38px; height: 38px; font-size: 16px; }
+  .brand-name { font-size: 1.1rem; }
+  .sensor-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gauge-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .scale-cards { grid-template-columns: 1fr 1fr; }
+  .wqi-row { flex-direction: column; gap: 12px; }
+  .wqi-track-wrap { width: 100%; }
+  .cost-grid { grid-template-columns: repeat(2, 1fr); }
+  .footer-tech { display: none; }
+  .hero-strip { display: none; }
+}
+@media (max-width: 600px) {
+  .wrap { padding: 12px 12px 32px; }
+  .header { padding: 12px 14px; border-radius: 14px; }
+  .input-card { padding: 14px; border-radius: 14px; }
+  .sensor-row { grid-template-columns: 1fr; gap: 10px; }
+  .gauge-row { grid-template-columns: 1fr; }
+  .scale-cards { grid-template-columns: 1fr; }
+  .verdict-meters { grid-template-columns: 1fr 1fr; }
+  .cost-grid { grid-template-columns: repeat(2, 1fr); }
+  .uc-grid { grid-template-columns: 1fr 1fr; }
+  .history-item { flex-wrap: wrap; gap: 6px; }
+  .hi-vals { flex-wrap: wrap; }
+}
+@media (max-width: 420px) {
+  .brand-name { font-size: 0.95rem; }
+  .verdict-meters { grid-template-columns: 1fr; }
+  .uc-grid { grid-template-columns: 1fr; }
+  .cost-grid { grid-template-columns: 1fr 1fr; }
+  .sc-tags { display: none; }
+  .presets-row { gap: 6px; }
+  .preset-btn { font-size: 0.65rem; padding: 5px 10px; }
+}
+
+
+/* ══ LIVE ESP32 FEED ══ */
+.live-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px; border-radius: 14px; margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(5,8,15,0.7), rgba(14,22,40,0.8));
+  border: 1px solid var(--rim); flex-wrap: wrap;
+  transition: border-color 0.4s, box-shadow 0.4s;
+}
+.live-bar.connected {
+  border-color: rgba(16,185,129,0.5);
+  box-shadow: 0 0 20px rgba(16,185,129,0.08);
+}
+.live-bar.error {
+  border-color: rgba(244,63,94,0.4);
+  box-shadow: 0 0 20px rgba(244,63,94,0.06);
+}
+.live-indicator {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 1px;
+}
+.live-pulse {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+.live-pulse.on {
+  background: var(--emerald);
+  box-shadow: 0 0 10px var(--emerald);
+  animation: livePulse 1.5s infinite;
+}
+.live-pulse.err { background: var(--rose); box-shadow: 0 0 8px var(--rose); }
+@keyframes livePulse {
+  0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.7}
+}
+.live-status { color: var(--slate); }
+.live-status.on { color: var(--emerald); }
+.live-status.err { color: var(--rose); }
+
+.live-readings {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.live-val-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 8px;
+  font-family: var(--font-mono); font-size: 0.7rem;
+  border: 1px solid var(--rim); background: rgba(0,0,0,0.3);
+  transition: all 0.3s;
+}
+.live-val-chip.updated {
+  animation: chipFlash 0.5s ease;
+}
+@keyframes chipFlash {
+  0%{background:rgba(16,185,129,0.2);border-color:var(--emerald)}
+  100%{background:rgba(0,0,0,0.3);border-color:var(--rim)}
+}
+.lvc-label { color: var(--muted); font-size: 0.6rem; letter-spacing: 2px; }
+.lvc-val { color: var(--white); font-weight: 600; font-size: 0.8rem; }
+
+.live-controls { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.btn-connect {
+  padding: 7px 16px; border-radius: 9px; border: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 1.5px;
+  font-weight: 600; transition: all 0.2s;
+  background: linear-gradient(135deg, var(--water-dim), var(--teal));
+  color: white; box-shadow: 0 4px 14px rgba(14,165,233,0.25);
+}
+.btn-connect:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(14,165,233,0.4); }
+.btn-connect.disconnect {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  box-shadow: 0 4px 14px rgba(244,63,94,0.2);
+}
+.btn-auto-analyze {
+  padding: 7px 14px; border-radius: 9px;
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 1px;
+  border: 1px solid var(--rim); background: transparent; color: var(--slate);
+  cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+}
+.btn-auto-analyze.on {
+  border-color: var(--emerald); color: var(--emerald);
+  background: rgba(16,185,129,0.08);
+}
+.btn-auto-analyze:hover { border-color: var(--rim2); color: var(--text); }
+
+.live-ip-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  margin-top: 8px;
+}
+.live-ip-input {
+  flex: 1; background: rgba(5,8,15,0.6); border: 1px solid var(--rim);
+  border-radius: 8px; padding: 7px 12px; color: var(--white);
+  font-family: var(--font-mono); font-size: 0.72rem; outline: none;
+  transition: border-color 0.2s;
+}
+.live-ip-input:focus { border-color: var(--water); }
+.live-ip-label { font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted); letter-spacing: 1px; white-space: nowrap; }
+
+.live-log {
+  width: 100%; margin-top: 10px; max-height: 80px; overflow-y: auto;
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted);
+  line-height: 1.6; display: none;
+}
+.live-log.on { display: block; }
+.log-line { padding: 1px 0; }
+.log-line.ok { color: var(--emerald); }
+.log-line.err { color: var(--rose); }
+.log-line.info { color: var(--water); }
+
+.last-update {
+  font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted);
+  margin-left: auto; letter-spacing: 1px;
+}
+
+
+/* ══ INPUT MODE TOGGLE (Manual / Automatic) ══ */
+.mode-toggle-wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px; gap: 12px; flex-wrap: wrap;
+}
+.mode-toggle-label {
+  font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 2px;
+  color: var(--slate); text-transform: uppercase;
+}
+.mode-toggle {
+  display: flex; border-radius: 14px; padding: 4px;
+  background: rgba(2,13,18,0.7); border: 1px solid var(--rim);
+  gap: 3px;
+}
+.mode-btn {
+  padding: 9px 22px; border-radius: 10px; border: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 1.5px;
+  font-weight: 600; transition: all 0.25s cubic-bezier(.16,1,.3,1);
+  background: transparent; color: var(--muted);
+  display: flex; align-items: center; gap: 7px;
+}
+.mode-btn:hover { color: var(--text); }
+.mode-btn.active-manual {
+  background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.12));
+  color: var(--emerald); border: 1px solid rgba(16,185,129,0.35);
+  box-shadow: 0 2px 16px rgba(16,185,129,0.15);
+}
+.mode-btn.active-auto {
+  background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(6,182,212,0.12));
+  color: var(--water); border: 1px solid rgba(34,211,238,0.35);
+  box-shadow: 0 2px 16px rgba(34,211,238,0.15);
+}
+.mode-indicator {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.mode-indicator.green { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+.mode-indicator.blue  { background: var(--water);   box-shadow: 0 0 8px var(--water); }
+
+/* Auto mode input panel */
+.auto-mode-panel {
+  display: none;
+  background: rgba(2,13,18,0.7);
+  border: 1px solid rgba(34,211,238,0.2);
+  border-radius: 16px; padding: 20px 22px;
+  margin-bottom: 20px;
+  position: relative; overflow: hidden;
+}
+.auto-mode-panel.visible { display: block; animation: fadeUp 0.35s cubic-bezier(.16,1,.3,1) both; }
+.auto-mode-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--water), var(--teal), transparent);
+}
+.auto-panel-title {
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 3px;
+  color: var(--water); text-transform: uppercase; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.auto-fields-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;
+}
+@media(max-width:560px){ .auto-fields-grid { grid-template-columns: 1fr; } }
+.auto-field-box {
+  background: rgba(6,24,32,0.8); border: 1px solid var(--rim);
+  border-radius: 12px; padding: 14px 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.auto-field-box:focus-within {
+  border-color: var(--water); box-shadow: 0 0 0 3px rgba(34,211,238,0.08);
+}
+.auto-field-label {
+  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 2px;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 8px;
+}
+.auto-field-input {
+  width: 100%; background: transparent; border: none; outline: none;
+  font-family: var(--font-display); font-size: 1.5rem; font-weight: 700;
+  color: var(--white);
+}
+.auto-field-input::placeholder { color: var(--rim2); font-size: 1.2rem; }
+.auto-field-unit {
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted);
+  margin-top: 4px;
+}
+.auto-fetch-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.auto-source-input {
+  flex: 1; min-width: 180px; background: rgba(6,24,32,0.8);
+  border: 1px solid var(--rim); border-radius: 10px;
+  padding: 9px 14px; color: var(--white); font-family: var(--font-mono);
+  font-size: 0.7rem; outline: none; transition: border-color 0.2s;
+}
+.auto-source-input:focus { border-color: var(--water); }
+.auto-interval-select {
+  background: rgba(6,24,32,0.8); border: 1px solid var(--rim);
+  border-radius: 10px; padding: 9px 14px; color: var(--white);
+  font-family: var(--font-mono); font-size: 0.7rem; outline: none;
+  cursor: pointer; transition: border-color 0.2s;
+}
+.auto-interval-select:focus { border-color: var(--water); }
+.btn-auto-fetch {
+  padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--water-dim), var(--teal));
+  color: white; font-family: var(--font-mono); font-size: 0.68rem;
+  letter-spacing: 1.5px; font-weight: 600;
+  transition: all 0.2s; white-space: nowrap;
+  display: flex; align-items: center; gap: 7px;
+}
+.btn-auto-fetch:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(34,211,238,0.3); }
+.btn-auto-fetch.running {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  box-shadow: 0 4px 14px rgba(244,63,94,0.2);
+}
+.auto-status-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+  background: rgba(34,211,238,0.05); border: 1px solid rgba(34,211,238,0.12);
+  font-family: var(--font-mono); font-size: 0.65rem;
+}
+.auto-status-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
+}
+.auto-status-dot.pulsing {
+  background: var(--water); box-shadow: 0 0 8px var(--water);
+  animation: livePulse 1.5s infinite;
+}
+.auto-status-text { color: var(--slate); }
+.auto-status-text.active { color: var(--water); }
+.auto-readings-chips { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.arc {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 7px;
+  background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2);
+  font-size: 0.65rem; color: var(--water);
+}
+
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--rim2); border-radius: 4px; }
+
+/* ── footer ── */
+.footer-wrap {
+  margin-top: 60px;
+  position: relative;
+  overflow: hidden;
+}
+.footer-glow {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--water), var(--teal), transparent);
+}
+.footer-glow::after {
+  content: '';
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 300px; height: 40px;
+  background: radial-gradient(ellipse, rgba(14,165,233,0.12) 0%, transparent 70%);
+  margin-top: -20px;
+}
+.footer-inner {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 24px 40px; gap: 28px;
+}
+.footer-logo {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.footer-orb {
+  width: 52px; height: 52px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(14,165,233,0.15), rgba(6,182,212,0.1));
+  border: 1px solid rgba(14,165,233,0.25);
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  position: relative;
+}
+.footer-orb::before {
+  content: '';
+  position: absolute; inset: -1px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(14,165,233,0.3), transparent, rgba(6,182,212,0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 1px;
+}
+.footer-brand-name {
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 800;
+  background: linear-gradient(90deg, var(--water), var(--teal));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+}
+.footer-tagline {
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--muted);
+  letter-spacing: 3px; text-transform: uppercase;
+}
+
+.footer-stats {
+  display: flex; gap: 0; border: 1px solid var(--rim); border-radius: 14px; overflow: hidden;
+}
+.fstat {
+  padding: 14px 24px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border-right: 1px solid var(--rim); background: rgba(14,22,40,0.6);
+  transition: background 0.2s;
+}
+.fstat:last-child { border-right: none; }
+.fstat:hover { background: rgba(14,165,233,0.06); }
+.fstat-val { font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--water); }
+.fstat-lbl { font-family: var(--font-mono); font-size: 0.56rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
+.footer-tech {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+}
+.ftech {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 13px; border-radius: 20px;
+  background: rgba(5,8,15,0.6); border: 1px solid var(--rim);
+  font-family: var(--font-mono); font-size: 0.6rem; color: var(--slate); letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.ftech:hover { border-color: var(--rim2); color: var(--text); background: rgba(14,165,233,0.05); }
+.ftech-dot { width: 5px; height: 5px; border-radius: 50%; }
+.ftech-dot.c1 { background: var(--water); }
+.ftech-dot.c2 { background: var(--emerald); }
+.ftech-dot.c3 { background: var(--amber); }
+.ftech-dot.c4 { background: #a78bfa; }
+
+.footer-divider {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rim), transparent);
+}
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+  gap: 12px; font-family: var(--font-mono); font-size: 0.58rem; color: var(--muted);
+  letter-spacing: 1px; width: 100%; padding: 0 4px;
+}
+.footer-copy { display: flex; align-items: center; gap: 8px; }
+.footer-copy .sep { color: var(--rim2); }
+.footer-pulse {
+  display: flex; align-items: center; gap: 6px;
+  color: var(--teal);
+}
+.fp-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+  box-shadow: 0 0 6px var(--teal); animation: blink 2s infinite;
+}
+</style>
+</head>
+<body>
+
+<div class="bg-canvas">
+  <div class="bg-blob"></div><div class="bg-blob"></div><div class="bg-blob"></div>
+  <canvas id="particles" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.35;"></canvas>
+</div>
+<div class="bg-grid"></div>
+
+<div class="wrap">
+
+  <!-- HERO STRIP -->
+  <div class="hero-strip" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:0 4px;opacity:0.55;animation:fadeUp 0.8s 0.3s both;">
+    <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,rgba(14,165,233,0.4));"></div>
+    <span style="font-family:var(--font-mono);font-size:0.58rem;letter-spacing:4px;color:var(--water);text-transform:uppercase;">Real-Time Water Intelligence · pH + TDS · AI-Powered Purification</span>
+    <div style="height:1px;flex:1;background:linear-gradient(90deg,rgba(14,165,233,0.4),transparent);"></div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-orb">💧</div>
+      <div>
+        <div class="brand-name">AquaSense AI</div>
+        <div class="brand-tagline">WATER QUALITY INTELLIGENCE — pH + TDS ANALYSIS</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <div class="badge badge-live"><div class="badge-dot green"></div>SENSOR LIVE</div>
+      <div class="badge badge-ai"><div class="badge-dot blue"></div>AI READY</div>
+    </div>
+  </header>
+
+  <!-- INPUT -->
+  <div class="input-card">
+    <!-- LIVE ESP32 CONNECTION BAR -->
+    <div class="live-bar" id="live-bar">
+      <div class="live-indicator">
+        <div class="live-pulse" id="live-pulse"></div>
+        <span class="live-status" id="live-status">ESP32 NOT CONNECTED</span>
+      </div>
+
+      <div class="live-readings" id="live-readings" style="display:none;">
+        <div class="live-val-chip" id="chip-ph">
+          <span class="lvc-label">PH</span>
+          <span class="lvc-val" id="live-ph-val">—</span>
+        </div>
+        <div class="live-val-chip" id="chip-tds">
+          <span class="lvc-label">TDS</span>
+          <span class="lvc-val" id="live-tds-val">— ppm</span>
+        </div>
+        <div class="live-val-chip">
+          <span class="lvc-label">UPDATED</span>
+          <span class="lvc-val" id="live-time-val">—</span>
+        </div>
+      </div>
+
+      <div class="last-update" id="last-update"></div>
+
+      <div class="live-controls">
+        <button class="btn-auto-analyze" id="btn-auto" onclick="toggleAutoAnalyze()" title="Auto-run AI analysis on every new reading">
+          ⚡ AUTO-ANALYZE: <span id="auto-label">OFF</span>
+        </button>
+        <button class="btn-auto-analyze" id="btn-lock" onclick="toggleLock()" title="Freeze values" style="border-color:rgba(245,158,11,0.5);color:#f59e0b;background:rgba(245,158,11,0.06);">🔓 LOCK VALUES</button>
+        <button class="btn-connect" id="btn-connect" onclick="toggleConnect()">CONNECT ESP32</button>
+      </div>
+
+      <div class="live-ip-row">
+        <span class="live-ip-label">BRIDGE URL:</span>
+        <input class="live-ip-input" id="bridge-url" value="http://localhost:5050" placeholder="http://localhost:5050">
+        <span class="live-ip-label" style="color:var(--dim);font-size:0.55rem;">Run esp32_bridge.py on your laptop first</span>
+      </div>
+
+      <div class="live-log" id="live-log"></div>
+    </div>
+
+    <div class="sec-label">Sensor Readings — Live from ESP32 / Manual Entry</div>
+
+    <!-- ══ INPUT MODE TOGGLE ══ -->
+    <div class="mode-toggle-wrap">
+      <span class="mode-toggle-label">⚙️ Input Mode</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active-manual" id="btn-mode-manual" onclick="setMode('manual')">
+          <div class="mode-indicator green"></div>MANUAL
+        </button>
+        <button class="mode-btn" id="btn-mode-auto" onclick="setMode('auto')">
+          <div class="mode-indicator blue"></div>AUTOMATIC
+        </button>
+      </div>
+    </div>
+
+    <!-- AUTO MODE PANEL -->
+    <div class="auto-mode-panel" id="auto-mode-panel">
+      <div class="auto-panel-title">🤖 Automatic Data Entry</div>
+      <div class="auto-fields-grid">
+        <div class="auto-field-box">
+          <div class="auto-field-label">📡 pH Reading</div>
+          <input class="auto-field-input" id="auto-ph" type="number" step="0.01" min="0" max="14" placeholder="7.0">
+          <div class="auto-field-unit">pH Units (0 – 14)</div>
+        </div>
+        <div class="auto-field-box">
+          <div class="auto-field-label">💧 TDS Reading</div>
+          <input class="auto-field-input" id="auto-tds" type="number" step="1" min="0" placeholder="350">
+          <div class="auto-field-unit">Parts Per Million (ppm)</div>
+        </div>
+      </div>
+      <div class="auto-fetch-row">
+        <input class="auto-source-input" id="auto-device-url" placeholder="Device URL / API endpoint (e.g. http://192.168.1.10/data)" value="">
+        <select class="auto-interval-select" id="auto-interval">
+          <option value="5000">Every 5s</option>
+          <option value="10000" selected>Every 10s</option>
+          <option value="30000">Every 30s</option>
+          <option value="60000">Every 60s</option>
+          <option value="0">Manual Trigger</option>
+        </select>
+        <button class="btn-auto-fetch" id="btn-auto-fetch" onclick="toggleAutoFetch()">
+          ▶ START POLLING
+        </button>
+      </div>
+      <div class="auto-status-row" id="auto-status-row">
+        <div class="auto-status-dot" id="auto-dot"></div>
+        <span class="auto-status-text" id="auto-status-text">Idle — configure a device URL or enter values above, then start polling</span>
+        <div class="auto-readings-chips" id="auto-chips" style="display:none;">
+          <div class="arc">pH: <strong id="arc-ph">—</strong></div>
+          <div class="arc">TDS: <strong id="arc-tds">—</strong> ppm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL MODE SENSORS (shown only in manual mode) -->
+    <div id="manual-sensor-section">
+    <div class="sensor-row">
+      <!-- pH -->
+      <div class="sensor-box ph" onclick="this.querySelector('input').focus()">
+        <div class="sensor-meta">
+          <div class="sensor-name">pH Value</div>
+          <div class="sensor-range">Scale 0 – 14</div>
+        </div>
+        <input class="sensor-field" id="ph" type="number" step="0.01" min="0" max="14" placeholder="7.0">
+        <div class="sensor-unit-row">
+          <div class="sensor-unit">pH Units</div>
+          <div class="sensor-hint-chip chip-good">Safe: 6.5 – 8.5</div>
+        </div>
+      </div>
+      <!-- TDS -->
+      <div class="sensor-box tds" onclick="this.querySelector('input').focus()">
+        <div class="sensor-meta">
+          <div class="sensor-name">TDS Value</div>
+          <div class="sensor-range">Parts Per Million</div>
+        </div>
+        <input class="sensor-field" id="tds" type="number" step="1" min="0" placeholder="350">
+        <div class="sensor-unit-row">
+          <div class="sensor-unit">ppm</div>
+          <div class="sensor-hint-chip chip-warn">WHO limit: 500 ppm</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Source -->
+    <div class="sec-label" style="margin-bottom:12px;">Water Source</div>
+    <div class="source-row" id="sources">
+      <div class="pill on" onclick="pick(this,'Pond Water')">🌿 Pond</div>
+      <div class="pill" onclick="pick(this,'River Water')">🏞️ River</div>
+      <div class="pill" onclick="pick(this,'Borewell / Groundwater')">⛏️ Borewell</div>
+      <div class="pill" onclick="pick(this,'Tap / Municipal Water')">🚿 Tap</div>
+      <div class="pill" onclick="pick(this,'Lake Water')">🏔️ Lake</div>
+      <div class="pill" onclick="pick(this,'Industrial Runoff')">🏭 Industrial</div>
+      <div class="pill" onclick="pick(this,'Rainwater / Harvested Water')">🌧️ Rain</div>
+    </div>
+
+    </div><!-- /manual-sensor-section -->
+
+    <!-- Live Override Hint -->
+    <div id="manual-hint" style="display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);margin-bottom:16px;">
+      <span style="font-size:1.1rem">📡</span>
+      <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--emerald);letter-spacing:1px;">VALUES LOCKED — LIVE FROM ESP32 · Manual input disabled while streaming</span>
+    </div>
+
+    <!-- Presets -->
+    <div class="sec-label" style="margin-bottom:10px;">Quick Presets</div>
+    <div class="presets-row">
+      <button class="preset-btn" onclick="preset(7.8,680,'Pond Water','🌿 Pond')">🌿 Pond Sample</button>
+      <button class="preset-btn" onclick="preset(6.9,310,'River Water','🏞️ River')">🏞️ River Sample</button>
+      <button class="preset-btn" onclick="preset(8.3,940,'Borewell / Groundwater','⛏️ Borewell')">⛏️ Borewell Sample</button>
+      <button class="preset-btn" onclick="preset(7.1,195,'Tap / Municipal Water','🚿 Tap')">🚿 Tap Sample</button>
+      <button class="preset-btn" onclick="preset(4.2,1850,'Industrial Runoff','🏭 Industrial')">🏭 Industrial Sample</button>
+    </div>
+
+    <!-- Analysis Scale -->
+    <div class="scale-section">
+      <div class="sec-label" style="margin-bottom:12px;">Analysis Scale — How much water are you treating?</div>
+      <div class="scale-cards">
+        <div class="scale-card large on" id="sc-large" onclick="pickScale('large')">
+          <div class="sc-top">
+            <div class="sc-icon">🏭</div>
+            <div class="sc-radio"></div>
+          </div>
+          <div class="sc-title">Large Scale</div>
+          <div class="sc-sub">1,000 L and above</div>
+          <div class="sc-tags">
+            <span class="sc-tag blue">Agricultural Fields</span>
+            <span class="sc-tag blue">Water Treatment Plants</span>
+            <span class="sc-tag amber">Industrial Use</span>
+            <span class="sc-tag blue">Irrigation</span>
+          </div>
+        </div>
+        <div class="scale-card small" id="sc-small" onclick="pickScale('small')">
+          <div class="sc-top">
+            <div class="sc-icon">🚰</div>
+            <div class="sc-radio"></div>
+          </div>
+          <div class="sc-title">Small Scale</div>
+          <div class="sc-sub">Under 1,000 L</div>
+          <div class="sc-tags">
+            <span class="sc-tag green">Household Drinking</span>
+            <span class="sc-tag green">Cooking & Food Prep</span>
+            <span class="sc-tag amber">Lab / Research</span>
+            <span class="sc-tag green">Personal Use</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 16px;border-radius:11px;background:rgba(5,8,15,0.6);border:1px solid var(--rim);">
+      <span style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:1px;color:var(--muted);white-space:nowrap;">🔑 API KEY</span>
+      <input type="password" id="apikey" placeholder="sk-ant-api03-..."
+        style="flex:1;min-width:160px;background:transparent;border:none;outline:none;color:var(--white);font-family:var(--font-mono);font-size:0.7rem;"
+        oninput="window._AQ_KEY=this.value;try{localStorage.setItem('aqk',this.value)}catch(e){};const v=this.value.startsWith('sk-ant-')&&this.value.length>20;document.getElementById('kstat').textContent=v?'✅ SET':'⚠️ CHECK';document.getElementById('kstat').style.color=v?'#10b981':'#f59e0b';">
+      <span id="kstat" style="font-family:var(--font-mono);font-size:0.58rem;color:var(--muted);white-space:nowrap;">NOT SET</span>
+    </div>
+    <button class="btn-analyze" id="abtn" onclick="go()">⚡&nbsp;&nbsp;RUN AI WATER ANALYSIS</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- VERDICT CARD -->
+    <div id="verdict-card" class="verdict-card" style="display:none;"></div>
+
+    <div class="gauge-row" id="gauges"></div>
+
+    <div class="wqi-bar-card" id="wqicard"></div>
+
+    <!-- COST CALCULATOR -->
+    <div class="cost-card" id="costcard" style="display:none;">
+      <div class="sec-label" style="margin-bottom:18px;">💸 Treatment Cost Estimator</div>
+      <div class="cost-grid" id="cost-tiles"></div>
+      <div class="cost-vol-row">
+        <input class="cost-vol-input" id="cost-vol" type="number" placeholder="1000" value="1000" min="1">
+        <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);">Litres</span>
+        <button class="cost-calc-btn" onclick="calcCost()">CALCULATE ₹</button>
+      </div>
+      <div class="cost-result" id="cost-result"></div>
+    </div>
+
+    <!-- SCAN HISTORY -->
+    <div class="history-card">
+      <div class="history-actions">
+        <div class="sec-label" style="margin-bottom:0;">📋 Scan History Log</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="hist-count" id="hist-count">0 scans</span>
+          <button class="hist-clear-btn" onclick="clearHistory()">Clear All</button>
+        </div>
+      </div>
+      <div id="history-list">
+        <div class="history-empty">No scans yet — run your first analysis above ↑</div>
+      </div>
+    </div>
+
+    <div class="ai-card">
+      <div class="ai-header">
+        <div class="ai-orb">🧠</div>
+        <div>
+          <div class="ai-title">AquaSense Intelligence Engine</div>
+          <div class="ai-sub">MULTI-PARAMETER WATER CHEMISTRY ANALYSIS</div>
+        </div>
+        <div class="ai-dots" id="dots">
+          <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
+        </div>
+      </div>
+      <div class="ai-body" id="aout"></div>
+    </div>
+
+  </div>
+
+  <div class="footer-wrap">
+    <div class="footer-glow"></div>
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div class="footer-orb">💧</div>
+        <div class="footer-brand-name">AQUASENSE AI</div>
+        <div class="footer-tagline">Intelligent Water Quality Analysis System</div>
+      </div>
+      <div class="footer-stats">
+        <div class="fstat"><div class="fstat-val">pH</div><div class="fstat-lbl">Acidity Sensor</div></div>
+        <div class="fstat"><div class="fstat-val">TDS</div><div class="fstat-lbl">Dissolved Solids</div></div>
+        <div class="fstat"><div class="fstat-val">WQI</div><div class="fstat-lbl">Quality Index</div></div>
+        <div class="fstat"><div class="fstat-val">AI</div><div class="fstat-lbl">Purification Engine</div></div>
+      </div>
+      <div class="footer-tech">
+        <div class="ftech"><div class="ftech-dot c1"></div>Arduino Uno</div>
+        <div class="ftech"><div class="ftech-dot c2"></div>pH Electrode Sensor</div>
+        <div class="ftech"><div class="ftech-dot c1"></div>TDS Meter Module</div>
+        <div class="ftech"><div class="ftech-dot c3"></div>I²C LCD Display</div>
+        <div class="ftech"><div class="ftech-dot c4"></div>Claude AI Engine</div>
+      </div>
+      <div class="footer-divider"></div>
+      <div class="footer-bottom">
+        <div class="footer-copy">
+          <span>AquaSense AI</span><span class="sep">·</span>
+          <span>Smart Water Intelligence</span><span class="sep">·</span>
+          <span>pH &amp; TDS Analysis</span>
+        </div>
+        <div class="footer-pulse"><div class="fp-dot"></div>SYSTEM OPERATIONAL</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let source = 'Pond Water';
+let scale = 'large'; // 'large' or 'small'
+let scanHistory = [];
+let liveInterval   = null;
+let autoAnalyze    = false;
+let isConnected    = false;
+let lastLivePH     = null;
+let lastLiveTDS    = null;
+let logLines       = [];
+
+// Value lock — freeze display when user clicks LOCK
+let valuesLocked = false;
+
+// Stabilization — only trigger analysis when values settle
+let stableDebounceTimer = null;
+let stablePH    = null;
+let stableTDS   = null;
+let isAnalyzing = false;
+const PH_THRESHOLD  = 0.05;   // ignore changes smaller than this (sensor noise)
+const TDS_THRESHOLD = 5;       // ignore changes smaller than this ppm
+
+// ══ ESP32 LIVE FEED ══
+function toggleConnect() {
+  if (isConnected) {
+    stopLive();
+  } else {
+    startLive();
+  }
+}
+
+function startLive() {
+  const url = document.getElementById('bridge-url').value.trim();
+  if (!url) { addLog('No bridge URL set', 'err'); return; }
+
+  addLog('Connecting to ' + url + ' ...', 'info');
+  document.getElementById('btn-connect').textContent = 'CONNECTING...';
+
+  // Immediate fetch to test connection
+  fetchLive(url, true);
+
+  // Then poll every 2 seconds
+  liveInterval = setInterval(() => fetchLive(url, false), 2000);
+}
+
+function stopLive() {
+  clearInterval(liveInterval);
+  clearTimeout(stableDebounceTimer);
+  liveInterval = null;
+  isConnected = false;
+  autoAnalyze = false;
+  setLiveUI(false, null, null);
+  document.getElementById('btn-connect').textContent = 'CONNECT ESP32';
+  document.getElementById('btn-connect').classList.remove('disconnect');
+  document.getElementById('btn-auto').classList.remove('on');
+  document.getElementById('auto-label').textContent = 'OFF';
+  addLog('Disconnected', 'err');
+}
+
+async function fetchLive(url, isFirst) {
+  try {
+    const res = await fetch(url + '/latest', { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+
+    if (d.ph !== null && d.tds !== null) {
+      const phVal  = parseFloat(parseFloat(d.ph).toFixed(2));
+      const tdsVal = Math.round(parseFloat(d.tds));
+
+      // Only count as "changed" if beyond noise threshold
+      const phChanged  = lastLivePH  === null || Math.abs(phVal  - lastLivePH)  >= PH_THRESHOLD;
+      const tdsChanged = lastLiveTDS === null || Math.abs(tdsVal - lastLiveTDS) >= TDS_THRESHOLD;
+
+      setLiveUI(true, phVal, tdsVal, d.timestamp);
+
+      // Flash chips on meaningful change
+      if (phChanged)  flashChip('chip-ph');
+      if (tdsChanged) flashChip('chip-tds');
+
+      // Only update input fields if NOT locked
+      if (!valuesLocked) {
+        document.getElementById('ph').value  = phVal;
+        document.getElementById('tds').value = tdsVal;
+        if (phChanged) {
+          const f = document.getElementById('ph');
+          f.style.color = '#10b981';
+          setTimeout(() => { f.style.color = ''; }, 1500);
+        }
+        if (tdsChanged) {
+          const f = document.getElementById('tds');
+          f.style.color = '#0ea5e9';
+          setTimeout(() => { f.style.color = ''; }, 1500);
+        }
+      }
+
+      // Auto analyze — debounced: wait 5s of stable readings before triggering
+      if (autoAnalyze && (phChanged || tdsChanged) && !isAnalyzing) {
+        clearTimeout(stableDebounceTimer);
+        addLog('Values changing — waiting for stable reading...', 'info');
+        stableDebounceTimer = setTimeout(() => {
+          // Check values haven't drifted since debounce started
+          const curPH  = parseFloat(document.getElementById('ph').value);
+          const curTDS = parseFloat(document.getElementById('tds').value);
+          const settled = Math.abs(curPH - phVal) < PH_THRESHOLD && Math.abs(curTDS - tdsVal) < TDS_THRESHOLD;
+          if (settled && !isAnalyzing) {
+            addLog('✅ Values stable → auto-analyzing pH=' + phVal + ' TDS=' + tdsVal, 'ok');
+            go();
+          }
+        }, 5000);
+      }
+
+      if (isFirst || phChanged || tdsChanged) {
+        addLog('📡 ' + (d.timestamp||'now') + '  pH=' + phVal + '  TDS=' + tdsVal + ' ppm', 'ok');
+        // Flash the analyze button to hint user
+        const abtn = document.getElementById('abtn');
+        if (abtn && !autoAnalyze && !isAnalyzing) {
+          abtn.style.boxShadow = '0 0 24px 4px rgba(16,185,129,0.5)';
+          abtn.innerHTML = '📡&nbsp;&nbsp;NEW ESP32 DATA — CLICK TO ANALYZE';
+          setTimeout(() => {
+            abtn.style.boxShadow = '';
+            abtn.innerHTML = '⚡&nbsp;&nbsp;RUN AI WATER ANALYSIS';
+          }, 3000);
+        }
+      }
+
+      lastLivePH  = phVal;
+      lastLiveTDS = tdsVal;
+
+      if (!isConnected) {
+        isConnected = true;
+        document.getElementById('btn-connect').textContent = 'DISCONNECT';
+        document.getElementById('btn-connect').classList.add('disconnect');
+        addLog('ESP32 bridge connected!', 'ok');
+      }
+
+      // Update last-update ticker
+      document.getElementById('last-update').textContent = '⟳ ' + new Date().toLocaleTimeString();
+
+    } else {
+      if (isFirst) addLog('Bridge running — waiting for ESP32 data...', 'info');
+      if (!isConnected) {
+        isConnected = true;
+        document.getElementById('btn-connect').textContent = 'DISCONNECT';
+        document.getElementById('btn-connect').classList.add('disconnect');
+        // Show readings row with dashes while waiting
+        document.getElementById('live-readings').style.display = 'flex';
+      }
+    }
+
+  } catch (e) {
+    if (isFirst) {
+      addLog('Cannot reach bridge: ' + e.message, 'err');
+      addLog('Is esp32_bridge.py running on your laptop?', 'err');
+      document.getElementById('btn-connect').textContent = 'CONNECT ESP32';
+      clearInterval(liveInterval);
+      isConnected = false;
+      setLiveUI(false, null, null);
+    }
+  }
+}
+
+function setLiveUI(connected, ph, tds, ts) {
+  const bar    = document.getElementById('live-bar');
+  const pulse  = document.getElementById('live-pulse');
+  const status = document.getElementById('live-status');
+  const reads  = document.getElementById('live-readings');
+
+  const manualRow  = document.getElementById('manual-sensor-row');
+  const manualHint = document.getElementById('manual-hint');
+
+  if (connected && ph !== null) {
+    bar.className    = 'live-bar connected';
+    pulse.className  = 'live-pulse on';
+    status.className = 'live-status on';
+    status.textContent = 'ESP32 LIVE ● STREAMING';
+    reads.style.display = 'flex';
+    document.getElementById('live-ph-val').textContent  = ph;
+    document.getElementById('live-tds-val').textContent = tds + ' ppm';
+    document.getElementById('live-time-val').textContent = ts || '—';
+    // Keep sensor row fully visible so live values show clearly — just disable manual editing
+    if (manualRow) manualRow.style.opacity = '1';
+    if (manualRow) manualRow.style.pointerEvents = 'none';
+    if (manualHint) manualHint.style.display = 'flex';
+  } else if (connected) {
+    bar.className    = 'live-bar connected';
+    pulse.className  = 'live-pulse on';
+    status.className = 'live-status on';
+    status.textContent = 'BRIDGE CONNECTED — waiting for ESP32...';
+    if (manualRow) { manualRow.style.opacity = '1'; manualRow.style.pointerEvents = 'auto'; }
+    if (manualHint) manualHint.style.display = 'none';
+  } else {
+    bar.className    = 'live-bar';
+    pulse.className  = 'live-pulse';
+    status.className = 'live-status';
+    status.textContent = 'ESP32 NOT CONNECTED';
+    reads.style.display = 'none';
+    if (manualRow) { manualRow.style.opacity = '1'; manualRow.style.pointerEvents = 'auto'; }
+    if (manualHint) manualHint.style.display = 'none';
+  }
+}
+
+function flashChip(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('updated');
+  void el.offsetWidth; // reflow
+  el.classList.add('updated');
+}
+
+function toggleAutoAnalyze() {
+  autoAnalyze = !autoAnalyze;
+  const btn = document.getElementById('btn-auto');
+  const lbl = document.getElementById('auto-label');
+  btn.classList.toggle('on', autoAnalyze);
+  lbl.textContent = autoAnalyze ? 'ON' : 'OFF';
+  addLog('Auto-analyze ' + (autoAnalyze ? 'ENABLED' : 'DISABLED'), 'info');
+}
+
+function toggleLock() {
+  valuesLocked = !valuesLocked;
+  const btn = document.getElementById('btn-lock');
+  if (valuesLocked) {
+    const ph  = document.getElementById('ph').value;
+    const tds = document.getElementById('tds').value;
+    btn.innerHTML = '🔒 LOCKED: pH ' + ph + ' / ' + tds + ' ppm';
+    btn.style.cssText = 'border-color:rgba(16,185,129,0.6);color:#10b981;background:rgba(16,185,129,0.1);';
+    addLog('🔒 Values locked at pH=' + ph + ' TDS=' + tds + ' ppm', 'ok');
+    // Visually highlight the frozen sensor boxes
+    document.getElementById('ph').style.color  = '#10b981';
+    document.getElementById('tds').style.color = '#10b981';
+  } else {
+    btn.innerHTML = '🔓 LOCK VALUES';
+    btn.style.cssText = 'border-color:rgba(245,158,11,0.5);color:#f59e0b;background:rgba(245,158,11,0.06);';
+    addLog('🔓 Values unlocked — resuming live feed', 'info');
+    document.getElementById('ph').style.color  = '';
+    document.getElementById('tds').style.color = '';
+  }
+}
+
+function addLog(msg, type='info') {
+  const el = document.getElementById('live-log');
+  if (!el) return;
+  el.classList.add('on');
+  const now = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  logLines.unshift({ msg, type, time: now });
+  if (logLines.length > 8) logLines.pop();
+  el.innerHTML = logLines.map(l =>
+    `<div class="log-line ${l.type}">[${l.time}] ${l.msg}</div>`
+  ).join('');
+}
+
+// ══ VERDICT CARD ══
+function buildVerdict(ph, tds, wqi) {
+  let cls, icon, headline, sub, phColor, tdsColor;
+  if (wqi >= 70 && ph >= 6.5 && ph <= 8.5 && tds <= 500) {
+    cls='vc-safe'; icon='✅'; headline='SAFE TO USE'; sub='Water meets WHO & BIS standards. Suitable for drinking after basic disinfection.';
+  } else if (wqi >= 45) {
+    cls='vc-warn'; icon='⚠️'; headline='TREATMENT REQUIRED'; sub='Water is moderately contaminated. Multi-step purification needed before use.';
+  } else {
+    cls='vc-danger'; icon='🚫'; headline='UNSAFE — DO NOT USE'; sub='Water is heavily contaminated. Mandatory multi-stage treatment before any human contact.';
+  }
+  phColor = ph>=6.5&&ph<=8.5?'#10b981':ph>=5.5&&ph<=9.5?'#f59e0b':'#f43f5e';
+  tdsColor = tds<=300?'#10b981':tds<=500?'#34d399':tds<=1000?'#f59e0b':'#f43f5e';
+  const phPct = Math.min(100, ((ph<=7?ph/7:1-(ph-7)/7)*100));
+  const tdsPct = Math.max(0, 100 - Math.min(100,(tds/2000)*100));
+  const wqiPct = wqi;
+
+  document.getElementById('verdict-card').className = 'verdict-card ' + cls;
+  document.getElementById('verdict-card').style.display = 'block';
+  document.getElementById('verdict-card').innerHTML = `
+    <div class="verdict-top">
+      <div class="verdict-icon">${icon}</div>
+      <div class="verdict-text">
+        <div class="verdict-headline" style="color:${cls==='vc-safe'?'#10b981':cls==='vc-warn'?'#f59e0b':'#f43f5e'}">${headline}</div>
+        <div class="verdict-sub">${sub}</div>
+      </div>
+    </div>
+    <div class="verdict-meters">
+      <div class="vm-item">
+        <div class="vm-label"><span>pH SAFETY</span><span style="color:${phColor}">${ph}</span></div>
+        <div class="vm-bar-track"><div class="vm-bar-fill" style="width:${phPct}%;background:${phColor}"></div></div>
+        <div class="vm-val" style="color:${phColor}">${ph>=6.5&&ph<=8.5?'Safe Range':'Out of Range'}</div>
+      </div>
+      <div class="vm-item">
+        <div class="vm-label"><span>TDS PURITY</span><span style="color:${tdsColor}">${tds} ppm</span></div>
+        <div class="vm-bar-track"><div class="vm-bar-fill" style="width:${tdsPct}%;background:${tdsColor}"></div></div>
+        <div class="vm-val" style="color:${tdsColor}">${tds<=500?'Within Limit':'Exceeds Limit'}</div>
+      </div>
+      <div class="vm-item">
+        <div class="vm-label"><span>WATER QUALITY INDEX</span><span style="color:${wqi>=70?'#10b981':wqi>=50?'#f59e0b':'#f43f5e'}">${wqi}/100</span></div>
+        <div class="vm-bar-track"><div class="vm-bar-fill" style="width:${wqiPct}%;background:linear-gradient(90deg,#f43f5e,#f59e0b,#10b981);width:${wqiPct}%"></div></div>
+        <div class="vm-val" style="color:${wqi>=70?'#10b981':wqi>=50?'#f59e0b':'#f43f5e'}">${wqi>=70?'Good':wqi>=50?'Moderate':'Poor'}</div>
+      </div>
+      <div class="vm-item">
+        <div class="vm-label"><span>DRINKABILITY</span></div>
+        <div class="vm-bar-track"><div class="vm-bar-fill" style="width:${wqiPct}%;background:${wqi>=70?'#10b981':wqi>=50?'#f59e0b':'#f43f5e'}"></div></div>
+        <div class="vm-val" style="color:${wqi>=70?'#10b981':wqi>=50?'#f59e0b':'#f43f5e'}">${wqi>=80?'Drinkable':wqi>=60?'After Treatment':'Not Drinkable'}</div>
+      </div>
+    </div>`;
+}
+
+// ══ COST CALCULATOR ══
+function buildCostCard(ph, tds, wqi) {
+  const card = document.getElementById('costcard');
+  card.style.display = 'block';
+
+  // Estimate stages needed
+  let stages = [];
+  if (['Pond Water','River Water','Lake Water','Industrial Runoff'].includes(source)) stages.push({name:'Coagulation', costPer1000: 8});
+  if (ph < 6.5 || ph > 8.5) stages.push({name:'pH Correction', costPer1000: 5});
+  if (tds > 500 && tds <= 1000) stages.push({name:'Carbon Filtration', costPer1000: 12});
+  if (tds > 1000) stages.push({name:'RO Treatment', costPer1000: 45});
+  stages.push({name:'UV Disinfection', costPer1000: 6});
+  stages.push({name:'Sand Filtration', costPer1000: 4});
+
+  const totalPer1000 = stages.reduce((a,s)=>a+s.costPer1000, 0);
+  const annualLitres = scale === 'large' ? 365000 : 1095;
+  const annualCost = (totalPer1000 / 1000) * annualLitres;
+  const medicalSaving = scale === 'large' ? annualCost * 14 : 12000;
+
+  document.getElementById('cost-tiles').innerHTML = `
+    <div class="cost-tile"><div class="cost-tile-icon">⚗️</div><div class="cost-tile-val">${stages.length}</div><div class="cost-tile-label">Treatment Stages</div></div>
+    <div class="cost-tile"><div class="cost-tile-icon">💧</div><div class="cost-tile-val">₹${totalPer1000}</div><div class="cost-tile-label">Cost per 1,000 L</div></div>
+    <div class="cost-tile"><div class="cost-tile-icon">📅</div><div class="cost-tile-val">₹${Math.round(annualCost).toLocaleString('en-IN')}</div><div class="cost-tile-label">Est. Annual Cost</div></div>
+    <div class="cost-tile"><div class="cost-tile-icon">🏥</div><div class="cost-tile-val">₹${Math.round(medicalSaving).toLocaleString('en-IN')}</div><div class="cost-tile-label">Medical Cost Saved/yr</div></div>`;
+}
+
+function calcCost() {
+  const vol = parseFloat(document.getElementById('cost-vol').value) || 1000;
+  const ph = parseFloat(document.getElementById('ph').value) || 7;
+  const tds = parseFloat(document.getElementById('tds').value) || 300;
+
+  let costPer1000 = 0;
+  if (['Pond Water','River Water','Lake Water','Industrial Runoff'].includes(source)) costPer1000 += 8;
+  if (ph < 6.5 || ph > 8.5) costPer1000 += 5;
+  if (tds > 500 && tds <= 1000) costPer1000 += 12;
+  if (tds > 1000) costPer1000 += 45;
+  costPer1000 += 10; // UV + sand base
+
+  const totalCost = Math.round((costPer1000 / 1000) * vol);
+  const roiStr = totalCost > 0 ? Math.round(12000 / (totalCost * 30)) + 'x' : '∞';
+
+  const el = document.getElementById('cost-result');
+  el.className = 'cost-result on';
+  el.innerHTML = `
+    <strong style="color:var(--water)">For ${vol.toLocaleString('en-IN')} litres:</strong><br>
+    Estimated treatment cost: <strong style="color:var(--emerald)">₹${totalCost.toLocaleString('en-IN')}</strong><br>
+    Breakdown: ₹${costPer1000}/1,000 L × ${vol.toLocaleString('en-IN')} L<br>
+    <span style="color:var(--muted)">Untreated equivalent illness cost (annual): <strong style="color:var(--rose)">~₹12,000–15,000</strong> per household</span>`;
+}
+
+// ══ SCAN HISTORY ══
+function addToHistory(ph, tds, wqi, src) {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) + ' · ' + now.toLocaleDateString('en-IN', {day:'numeric',month:'short'});
+  scanHistory.unshift({ ph, tds, wqi, src: src || source, scale, time: timeStr, id: Date.now() });
+  if (scanHistory.length > 20) scanHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  document.getElementById('hist-count').textContent = scanHistory.length + ' scan' + (scanHistory.length !== 1 ? 's' : '');
+  if (!scanHistory.length) {
+    el.innerHTML = '<div class="history-empty">No scans yet — run your first analysis above ↑</div>';
+    return;
+  }
+  el.innerHTML = '<div class="history-list">' + scanHistory.map((s,i) => {
+    const phCls = s.ph>=6.5&&s.ph<=8.5?'hi-ph-good':s.ph>=5.5&&s.ph<=9.5?'hi-ph-warn':'hi-ph-bad';
+    const tdsCls = s.tds<=500?'hi-tds-good':s.tds<=1000?'hi-tds-warn':'hi-tds-bad';
+    const wqiCol = s.wqi>=70?'#10b981':s.wqi>=50?'#f59e0b':'#f43f5e';
+    return `<div class="history-item" onclick="reloadScan(${i})">
+      <div class="hi-num">#${scanHistory.length-i}</div>
+      <div class="hi-source">${s.src} · ${s.scale === 'large' ? '🏭 Large' : '🚰 Small'}</div>
+      <div class="hi-vals">
+        <span class="hi-val ${phCls}">pH ${s.ph}</span>
+        <span class="hi-val ${tdsCls}">${s.tds} ppm</span>
+        <span class="hi-val" style="background:rgba(255,255,255,0.04);color:${wqiCol}">WQI ${s.wqi}</span>
+      </div>
+      <div class="hi-time">${s.time}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function reloadScan(idx) {
+  const s = scanHistory[idx];
+  document.getElementById('ph').value = s.ph;
+  document.getElementById('tds').value = s.tds;
+  scale = s.scale;
+  document.getElementById('sc-large').classList.toggle('on', s.scale === 'large');
+  document.getElementById('sc-small').classList.toggle('on', s.scale === 'small');
+  document.querySelectorAll('.pill').forEach(p => {
+    if (p.textContent.trim().toLowerCase().includes(s.src.split(' ')[0].toLowerCase())) p.click();
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function clearHistory() {
+  scanHistory = [];
+  renderHistory();
+}
+
+function pickScale(s) {
+  scale = s;
+  document.getElementById('sc-large').classList.toggle('on', s === 'large');
+  document.getElementById('sc-small').classList.toggle('on', s === 'small');
+}
+
+function pick(el, s) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('on'));
+  el.classList.add('on');
+  source = s;
+}
+
+function preset(ph, tds, src, srcLabel) {
+  document.getElementById('ph').value = ph;
+  document.getElementById('tds').value = tds;
+  document.querySelectorAll('.pill').forEach(p => {
+    if (p.textContent.trim() === srcLabel) p.click();
+  });
+}
+
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+function phStatus(v) {
+  if (v >= 6.5 && v <= 8.5) return { lbl:'SAFE', cls:'s-safe', col:'#10b981' };
+  if ((v >= 6.0 && v < 6.5) || (v > 8.5 && v <= 9.5)) return { lbl:'MODERATE', cls:'s-mild', col:'#f59e0b' };
+  return { lbl:'UNSAFE', cls:'s-poor', col:'#f43f5e' };
+}
+function tdsStatus(v) {
+  if (v <= 300)  return { lbl:'EXCELLENT', cls:'s-safe', col:'#10b981' };
+  if (v <= 500)  return { lbl:'GOOD',      cls:'s-safe', col:'#34d399' };
+  if (v <= 1000) return { lbl:'MODERATE',  cls:'s-mild', col:'#f59e0b' };
+  if (v <= 2000) return { lbl:'POOR',      cls:'s-poor', col:'#f43f5e' };
+  return { lbl:'CRITICAL', cls:'s-crit', col:'#ff4d6d' };
+}
+
+function arcPath(pct, r, sw) {
+  const c = 2 * Math.PI * r;
+  const d = clamp(pct,2,99) / 100 * c;
+  return `${d} ${c - d}`;
+}
+
+function buildGauges(ph, tds) {
+  const ps = phStatus(ph), ts = tdsStatus(tds);
+  const phPct = (ph / 14) * 100;
+  const tdsPct = clamp((tds / 2500) * 100, 0, 100);
+  const R = 56, CX = 70, CY = 70, SW = 11;
+  const C = 2 * Math.PI * R;
+
+  function ring(pct, color1, color2, gid) {
+    const d = clamp(pct, 2, 99) / 100 * C;
+    return `<svg viewBox="0 0 140 140" width="140" height="140" style="transform:rotate(-90deg)">
+      <defs><linearGradient id="${gid}" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="${color1}"/><stop offset="100%" stop-color="${color2}"/>
+      </linearGradient></defs>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="${SW}"/>
+      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="url(#${gid})" stroke-width="${SW}"
+        stroke-dasharray="${d} ${C - d}" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  return `
+  <div class="gauge-card">
+    <div class="gc-label">pH Level</div>
+    <div class="gc-ring">
+      ${ring(phPct, '#10b981', '#06b6d4', 'phg')}
+      <div class="gc-center">
+        <div class="gc-value" style="color:${ps.col}">${ph}</div>
+        <div class="gc-unit">pH</div>
+      </div>
+    </div>
+    <div class="gc-status ${ps.cls}"><span>●</span> ${ps.lbl}</div>
+  </div>
+  <div class="gauge-card">
+    <div class="gc-label">TDS — Total Dissolved Solids</div>
+    <div class="gc-ring">
+      ${ring(tdsPct, '#0ea5e9', '#f59e0b', 'tdsg')}
+      <div class="gc-center">
+        <div class="gc-value" style="color:${ts.col}">${tds}</div>
+        <div class="gc-unit">ppm</div>
+      </div>
+    </div>
+    <div class="gc-status ${ts.cls}"><span>●</span> ${ts.lbl}</div>
+  </div>`;
+}
+
+function calcWQI(ph, tds) {
+  let score = 100;
+  // pH penalty
+  const phIdeal = 7.0;
+  const phDev = Math.abs(ph - phIdeal);
+  if (phDev > 0) score -= Math.min(35, phDev * 9);
+  // TDS penalty
+  if (tds > 500)  score -= Math.min(30, ((tds - 500)  / 500)  * 25);
+  if (tds > 1000) score -= Math.min(20, ((tds - 1000) / 1000) * 20);
+  if (tds > 2000) score -= 15;
+  return Math.max(0, Math.round(score));
+}
+
+function wqiVerdict(s) {
+  if (s >= 90) return ['#10b981', 'Excellent — Safe for drinking with minimal treatment.'];
+  if (s >= 70) return ['#34d399', 'Good — Minor treatment recommended before consumption.'];
+  if (s >= 50) return ['#f59e0b', 'Moderate — Multi-step treatment required. Not for direct drinking.'];
+  if (s >= 30) return ['#fb923c', 'Poor — Significant purification needed. Agricultural use only until treated.'];
+  return ['#f43f5e', 'Critical — Heavily contaminated. Multiple purification stages mandatory.'];
+}
+
+function buildWQI(ph, tds) {
+  const score = calcWQI(ph, tds);
+  const pct = score;
+  const [col, verdict] = wqiVerdict(score);
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px;">
+      <div class="sec-label" style="margin-bottom:0;">Water Quality Index</div>
+      <div id="scale-badge" style="font-family:var(--font-mono);font-size:0.62rem;padding:5px 12px;border-radius:8px;letter-spacing:1px;"></div>
+    </div>
+    <div class="wqi-row">
+      <div class="wqi-score-box">
+        <div class="wqi-num" style="color:${col}">${score}</div>
+        <div class="wqi-label">OUT OF 100</div>
+      </div>
+      <div class="wqi-track-wrap">
+        <div class="wqi-track-label"><span>Critical</span><span>Moderate</span><span>Excellent</span></div>
+        <div class="wqi-track">
+          <div class="wqi-needle" style="left:${pct}%"></div>
+        </div>
+        <div class="wqi-verdict" style="color:${col}; margin-top:12px;">
+          <strong>${verdict}</strong>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function go() {
+  if (isAnalyzing) return; // prevent overlapping calls
+  isAnalyzing = true;
+
+  // If ESP32 is live, always use the latest live values
+  if (isConnected && lastLivePH !== null && lastLiveTDS !== null) {
+    document.getElementById('ph').value  = lastLivePH;
+    document.getElementById('tds').value = lastLiveTDS;
+  }
+  const ph = parseFloat(document.getElementById('ph').value);
+  const tds = parseFloat(document.getElementById('tds').value);
+  if (isNaN(ph) || isNaN(tds)) { alert('⚠️ Please enter both pH and TDS values, or connect your ESP32.'); return; }
+
+  const btn = document.getElementById('abtn');
+  btn.disabled = true; btn.textContent = '⏳ Analyzing...';
+
+
+
+  document.getElementById('results').classList.add('on');
+  const wqi = calcWQI(ph, tds);
+  buildVerdict(ph, tds, wqi);
+  buildCostCard(ph, tds, wqi);
+  addToHistory(ph, tds, wqi, source);
+  document.getElementById('gauges').innerHTML = buildGauges(ph, tds);
+  document.getElementById('wqicard').innerHTML = buildWQI(ph, tds);
+  // Update scale badge
+  const sbEl = document.getElementById('scale-badge');
+  if(sbEl) {
+    if(scale === 'large') {
+      sbEl.textContent = '🏭 LARGE SCALE · 1,000+ L';
+      sbEl.style.cssText = 'font-family:var(--font-mono);font-size:0.62rem;padding:5px 12px;border-radius:8px;letter-spacing:1px;background:rgba(14,165,233,0.1);color:var(--water);border:1px solid rgba(14,165,233,0.25);';
+    } else {
+      sbEl.textContent = '🚰 SMALL SCALE · HOUSEHOLD';
+      sbEl.style.cssText = 'font-family:var(--font-mono);font-size:0.62rem;padding:5px 12px;border-radius:8px;letter-spacing:1px;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.25);';
+    }
+  }
+  document.getElementById('aout').innerHTML = '';
+  document.getElementById('dots').style.display = 'flex';
+
+
+  const scaleLabel = scale === 'large' ? 'Large Scale (1,000+ Litres — Agricultural / Industrial / Municipal)' : 'Small Scale (Under 1,000 Litres — Household / Drinking / Cooking / Lab)';
+
+  const prompt = `You are AquaSense AI, an advanced water quality intelligence engine. Analyze the water sample below and produce a comprehensive, professional, expert-level HTML report. Be specific, cite real-world statistics, reference global water crisis data, and provide innovative ideas.
+
+SAMPLE DATA:
+- Water Source: ${source}
+- pH: ${ph} (safe range 6.5–8.5; neutral = 7.0)
+- TDS: ${tds} ppm (WHO drinking limit: 500 ppm; acceptable: up to 1000 ppm)
+- Water Quality Index (computed): ${wqi}/100
+- Analysis Scale: ${scaleLabel}
+- No turbidity sensor — estimate qualitatively from source and TDS level.
+
+RESPOND WITH ONLY CLEAN HTML FRAGMENTS. No markdown, no backticks, no preamble. Use the structure below exactly.
+
+<!-- BLOCK 1: Real-World Context & Assessment -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🌍</span> REAL-WORLD WATER CRISIS CONTEXT</div>
+<div class="assessment-text">
+[Write 3-4 sentences connecting THIS water sample to real-world global/Indian water problems. Include real statistics (e.g. "2.2 billion people lack safe drinking water", "India ranks 120th out of 122 countries in water quality", "70% of India's surface water is contaminated"). Relate the pH=${ph} and TDS=${tds} ppm readings directly to what problems this kind of water causes in the real world — disease, crop damage, industrial failures, etc. Make it feel urgent and important. Use <strong> for key facts and numbers. Use hl-good/hl-warn/hl-bad spans for values.]
+</div>
+</div>
+
+<!-- BLOCK 2: Alert -->
+[Insert ONE alert div based on safety:
+- If unsafe: <div class="alert a-bad"><div class="alert-icon">⚠️</div><div>Specific risk message with actual values</div></div>
+- If borderline: <div class="alert a-warn"><div class="alert-icon">⚠️</div><div>Caution message</div></div>
+- If safe: <div class="alert a-good"><div class="alert-icon">✅</div><div>Positive confirmation with values</div></div>]
+
+<!-- BLOCK 3: Scale-Specific Purification Protocol -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">⚗️</span> PURIFICATION PROTOCOL — ${scale === 'large' ? 'LARGE SCALE (1,000+ L)' : 'SMALL SCALE (HOUSEHOLD)'}</div>
+<div class="step-list">
+[Generate 6 purification steps TAILORED TO THE SCALE.
+- If LARGE scale: steps should involve industrial coagulation tanks, filter beds, chlorination towers, RO plants, UV reactors at scale. Mention capacity (e.g. "per 10,000 L/day"), cost-effectiveness, and infrastructure.
+- If SMALL scale: steps should involve household RO filters, boiling, alum jar treatment, small activated carbon filters, UV pens, etc. Mention cost in INR.
+Every step must address actual pH=${ph} and TDS=${tds} values. Use step HTML format:
+<div class="step"><div class="step-badge sb1">01</div><div class="step-info"><div class="step-name">Name <span class="step-tag t-chem">CHEMICAL</span></div><div class="step-desc">Detailed specific explanation with values, doses, and expected outcomes.</div></div></div>
+Use sb1-sb6 for priorities. Tags: t-chem, t-phys, t-bio, t-elec.]
+</div>
+</div>
+
+<!-- BLOCK 4: Scale-Specific Use Cases -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">💡</span> ${scale === 'large' ? 'LARGE-SCALE WATER DEPLOYMENT APPLICATIONS' : 'HOUSEHOLD & PERSONAL WATER APPLICATIONS'}</div>
+<div class="uc-grid">
+[Generate 6 uc-tile divs SPECIFIC TO THE SCALE:
+- LARGE scale: agricultural irrigation systems, municipal water supply, industrial cooling, fish farms/aquaculture, construction, fire suppression systems, textile mills, food processing plants.
+- SMALL scale: drinking water, cooking, baby formula, medication, personal hygiene, aquarium, hydroponics at home, drinking water for livestock.
+Base use cases on achievable quality after treatment for the given pH and TDS. Format:
+<div class="uc-tile"><div class="uc-emoji">🌾</div><div class="uc-text"><strong>Use Name</strong><span>Specific suitability condition</span></div></div>]
+</div>
+</div>
+
+<!-- BLOCK 5: Standards Table -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">📊</span> PARAMETER BENCHMARKING vs GLOBAL STANDARDS</div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Parameter</th><th>Measured Value</th><th>WHO Standard</th><th>BIS India</th><th>EPA (USA)</th><th>Verdict</th></tr></thead>
+<tbody>
+[Row for pH with tv-good/tv-warn/tv-bad on measured value]
+[Row for TDS with appropriate class]
+[Row for WQI score ${wqi}/100 — >70 tv-good, 50-70 tv-warn, <50 tv-bad]
+</tbody>
+</table></div>
+</div>
+
+<!-- BLOCK 6: Innovative Ideas -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🚀</span> INNOVATIVE SOLUTIONS & FUTURE UPGRADES</div>
+<div class="insight">
+[Write 5-6 genuinely innovative, specific, and creative ideas that go BEYOND basic purification. These should be real cutting-edge techniques relevant to this water quality and scale:
+Examples to consider (pick relevant ones and add more):
+- Solar-powered electrocoagulation for high-TDS water
+- Biochar filtration from agricultural waste (cost: ₹50–200 per filter)
+- Constructed wetlands for large-scale natural treatment
+- IoT-based real-time water quality monitoring network
+- AI-predictive dosing systems that auto-adjust chemical doses
+- Photocatalytic disinfection using TiO₂ nanoparticles + sunlight
+- Moringa seed extract as a natural coagulant (free, organic)
+- Capacitive deionization for TDS reduction without waste water
+Be specific — mention expected performance, cost, and why it's relevant to pH=${ph}/TDS=${tds}. Use <strong> for technique names. Format as flowing paragraph text with line breaks between ideas.]
+</div>
+</div>
+
+<!-- BLOCK 7: Chemical Dosing Guide -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🧪</span> CHEMICAL DOSING — ${scale === 'large' ? 'PER 10,000 LITRES' : 'PER 100 LITRES'}</div>
+<div class="insight">
+[Give precise chemical dosing instructions SCALED to the analysis scale (per 10,000 L if large, per 100 L if small).
+- pH correction based on deviation from 7.0 for pH=${ph}
+- Coagulant dose (Alum) if TDS > 300 or source is pond/river
+- Disinfection dose (NaOCl or UV time)
+- Post-treatment re-check targets
+Use <strong> for all chemical names and exact doses. Mention contact times and mixing instructions.]
+</div>
+</div>
+
+<!-- BLOCK 8: Health Risk Deep-Dive -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🩺</span> HEALTH RISK ANALYSIS & DISEASE PROFILE</div>
+<div class="assessment-text">
+[Write a detailed health risk profile for water with pH=${ph} and TDS=${tds} ppm. Cover:
+- Specific diseases/conditions caused by this water quality (e.g. cholera, typhoid, kidney stones, fluorosis, heavy metal poisoning — pick what's relevant)
+- Which demographics are most at risk (children under 5, pregnant women, elderly)
+- Estimated illness probability if consumed untreated (use real WHO/CDC statistics)
+- Long-term chronic effects vs short-term acute risks
+- Cite real outbreak examples if relevant (e.g. Flint Michigan water crisis for high TDS, Bangladesh arsenic crisis)
+Use <strong> for disease names and statistics. Use hl-bad for dangerous conditions, hl-warn for moderate risks.]
+</div>
+</div>
+
+<!-- BLOCK 9: Economic Impact Report -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">💰</span> ECONOMIC IMPACT & COST-BENEFIT ANALYSIS</div>
+<div class="insight">
+[Provide a real economic analysis:
+- Cost of NOT treating this water (medical bills, lost productivity, crop damage — use real Indian rupee estimates)
+- Cost of treating this water at the given scale (${scale === 'large' ? 'per 10,000 L/day for large scale' : 'per household per month for small scale'})
+- ROI calculation: treatment cost vs prevented losses
+- Reference real data (e.g. "WHO estimates every ₹1 spent on water treatment saves ₹4–12 in healthcare costs")
+- Mention government schemes available in India (Jal Jeevan Mission, AMRUT, NRCP)
+Use <strong> for all numbers and scheme names.]
+</div>
+</div>
+
+<!-- BLOCK 10: AI Predictive Forecast -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🔮</span> AI PREDICTIVE WATER QUALITY FORECAST</div>
+<div class="assessment-text">
+[Based on source (${source}), pH=${ph}, TDS=${tds} ppm, predict how this water quality CHANGES over time without intervention:
+- Seasonal variation: how monsoon/summer/winter affects pH and TDS for this specific source type
+- Long-term degradation trend: will TDS increase (borewell depletion concentrates minerals), will pH drift acidic (industrial runoff) or alkaline (evaporation)
+- Climate change impact: rising temperatures, reduced rainfall, increased drought worsening this source
+- Breaking point: estimate when this source becomes completely unusable without major intervention
+- Early warning signs to watch on pH and TDS sensors before crisis point
+4-5 sentences. Use <strong> for time estimates and predictions. Use hl-warn/hl-bad for urgent risks.]
+</div>
+</div>
+
+<!-- BLOCK 11: IoT Smart Monitoring Blueprint -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">📡</span> IoT SMART MONITORING SYSTEM BLUEPRINT</div>
+<div class="insight">
+[Design a complete IoT water monitoring system for this use case:
+- Sensor upgrades beyond pH+TDS: ORP sensor (₹600), DO sensor (₹800), temperature probe (₹200), flow meter (₹1,200)
+- Microcontroller: ESP32 (₹350) with WiFi for real-time cloud upload vs Arduino Uno for local display
+- Cloud platform: ThingSpeak (free, 3M msg/year), Blynk IoT (free tier), or AWS IoT Core
+- Alert system: Telegram bot API for instant pH/TDS threshold alerts to phone — completely free
+- Data logging: SD card module (₹150) + Google Sheets via ESP32 webhook for spreadsheet logging
+- Power: solar panel + 18650 battery pack for remote field deployment (~₹2,500 total)
+- Total system cost estimate with all components in INR
+Use <strong> for component names and prices.]
+</div>
+</div>
+
+<!-- BLOCK 12: Nature-Based Solutions -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">🌿</span> NATURE-BASED & BIOMIMICRY PURIFICATION</div>
+<div class="insight">
+[4-5 nature-inspired methods relevant to pH=${ph} / TDS=${tds} / ${source}:
+- Moringa oleifera seeds: 0.5–1g crushed per liter reduces suspended particles 90%, adjusts pH naturally, completely free
+- Bamboo charcoal bio-filter: 3x surface area of regular charcoal for better TDS adsorption
+- Vetiver grass phytoremediation: removes heavy metals and nitrates naturally, used across rural India
+- Cactus mucilage (Opuntia): natural flocculant, outperforms alum in some studies, pH-neutral
+- SODIS method: 6 hours direct sunlight in clear PET bottle kills 99.9% pathogens — WHO approved, zero cost
+- Constructed wetlands with Phragmites australis: removes 85% BOD at large scale naturally
+Mention scientific evidence, effectiveness %, and why relevant to this specific water sample.
+Use <strong> for all method/plant names and percentages.]
+</div>
+</div>
+
+<!-- BLOCK 13: Zero-Waste Circular Economy -->
+<div class="out-block">
+<div class="out-title"><span class="ot-icon">♻️</span> ZERO-WASTE CIRCULAR WATER ECONOMY PLAN</div>
+<div class="insight">
+[Design a zero-waste circular water strategy for pH=${ph}/TDS=${tds} ${source} at ${scale === 'large' ? 'large (industrial/agricultural) scale' : 'small (household) scale'}:
+- RO reject water (40% waste stream): uses for toilet flushing, mopping, irrigation if TDS < 2000
+- Coagulation sludge: compost as soil conditioner if non-toxic, or use for brick/block making
+- Mineral recovery from high-TDS water: calcium, magnesium extraction for industrial use
+- Greywater recycling loop: treated water → use → secondary treatment → reuse cycle
+- Rainwater harvesting integration to dilute high-TDS sources naturally
+- Specific circular plan for this exact water quality and scale
+Use <strong> for process names and quantities. Write as a real sustainability consultant's report.]
+</div>
+</div>`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': window._AQ_KEY || '',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 2500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error.message || 'API error');
+    const raw = (data.content || []).map(i => i.text || '').join('');
+    const html = raw.replace(/```html?|```/g, '').trim();
+
+    document.getElementById('dots').style.display = 'none';
+    const el = document.getElementById('aout');
+    el.style.opacity = '0';
+    el.innerHTML = html || fallback(ph, tds, wqi);
+    el.style.transition = 'opacity 0.35s ease';
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+
+  } catch (e) {
+    document.getElementById('dots').style.display = 'none';
+    const el = document.getElementById('aout');
+    el.style.opacity = '0';
+    el.innerHTML = fallback(ph, tds, wqi);
+    el.style.transition = 'opacity 0.35s ease';
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+  }
+
+  btn.disabled = false; btn.innerHTML = '⚡&nbsp;&nbsp;RUN AI WATER ANALYSIS';
+  isAnalyzing = false;
+  setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+}
+
+function fallback(ph, tds, wqi) {
+  const ps = phStatus(ph), ts = tdsStatus(tds);
+  const steps = [];
+
+  if (['Pond Water','River Water','Lake Water','Industrial Runoff'].includes(source)) {
+    steps.push({ n:'01', sb:'sb1', name:'Coagulation + Flocculation', tag:'t-chem', type:'CHEMICAL',
+      desc:`Add Alum (Aluminium Sulphate) at <strong>10–15 mg/L</strong> to the water sample. Stir vigorously for 2 min, then slowly for 15 min. This causes suspended particles to clump into flocs. Given this is ${source}, suspended organic matter is expected even without a turbidity sensor.` });
+    steps.push({ n:'02', sb:'sb2', name:'Sedimentation + Gravity Filtration', tag:'t-phys', type:'PHYSICAL',
+      desc:`Allow treated water to settle undisturbed for <strong>30–45 minutes</strong>. Flocs sink to the bottom. Decant the clear supernatant through a <strong>3-layer sand-gravel-charcoal filter</strong> (30cm gravel → 20cm coarse sand → 15cm activated carbon).` });
+  }
+
+  if (ph < 6.5) {
+    const deficit = (7.0 - ph).toFixed(1);
+    steps.push({ n: steps.length < 1 ? '01' : '0'+(steps.length+1), sb: steps.length < 1 ? 'sb1':'sb3', name:'pH Correction — Alkalization', tag:'t-chem', type:'CHEMICAL',
+      desc:`pH of <strong>${ph}</strong> is acidic (ideal: 6.5–8.5, deviation: ${deficit} units). Add <strong>Hydrated Lime Ca(OH)₂ at ~3–6 mg/L per 1000 L</strong>. Stir and recheck pH every 5 min until target range is reached. Alternatively, use food-grade Soda Ash (Na₂CO₃).` });
+  } else if (ph > 8.5) {
+    const excess = (ph - 7.0).toFixed(1);
+    steps.push({ n: steps.length < 1 ? '01' : '0'+(steps.length+1), sb: steps.length < 1 ? 'sb1':'sb3', name:'pH Correction — Acidification', tag:'t-chem', type:'CHEMICAL',
+      desc:`pH of <strong>${ph}</strong> is alkaline (deviation: ${excess} units above neutral). Inject <strong>CO₂ at 2–4 mg/L</strong> or add food-grade citric acid dropwise while stirring. CO₂ injection is safest for a college lab setup. Recheck until pH reaches 7.0–7.5.` });
+  }
+
+  if (tds > 500) {
+    steps.push({ n:'0'+(steps.length+1), sb:'sb4', name:'Activated Carbon Adsorption', tag:'t-phys', type:'PHYSICAL',
+      desc:`TDS of <strong>${tds} ppm</strong> exceeds WHO limit (500 ppm). Pass water through <strong>activated carbon column (500g GAC per 10 L/hr flow rate)</strong>. This removes dissolved organics, chlorine, heavy metals, and improves taste/odour.` });
+  }
+
+  if (tds > 900) {
+    steps.push({ n:'0'+(steps.length+1), sb:'sb4', name:'Reverse Osmosis Filtration', tag:'t-phys', type:'PHYSICAL',
+      desc:`TDS of <strong>${tds} ppm</strong> is significantly high. RO membrane (pore size 0.0001 micron, operating pressure 4–8 bar) will reduce TDS by <strong>85–95%</strong>, bringing it to ~${Math.round(tds*0.1)}–${Math.round(tds*0.15)} ppm. Domestic RO units (₹4,000–8,000) are suitable for this project demo.` });
+  }
+
+  steps.push({ n:'0'+(steps.length+1), sb:'sb5', name:'UV / Chlorine Disinfection', tag:'t-bio', type:'BIOLOGICAL',
+    desc:`Final kill step for pathogens. Option A: <strong>UV lamp at 254 nm for 30 seconds</strong> (preferred for lab demo). Option B: Add <strong>0.2–0.5 mg/L Sodium Hypochlorite (NaOCl)</strong>. Ensure minimum 30-min contact time before declaring water safe.` });
+
+  steps.push({ n:'0'+(steps.length+1), sb:'sb6', name:'Post-Treatment Quality Check', tag:'t-elec', type:'SENSOR',
+    desc:`After purification, re-read both sensors. Target: <strong>pH 7.0–7.5, TDS &lt; 500 ppm</strong>. Log before/after values on Arduino serial monitor. This demonstrates quantifiable improvement — crucial for your college review board.` });
+
+  const usecases = tds > 1000 ? [
+    { e:'🌱', t:'Agricultural Irrigation', d:'Safe for most crops post-coagulation' },
+    { e:'🏗️', t:'Construction', d:'Concrete mixing, brick curing, road work' },
+    { e:'🚿', t:'Industrial Sanitation', d:'Cleaning, equipment washing, cooling' },
+    { e:'🔥', t:'Fire Suppression', d:'Suitable for firefighting systems' },
+    { e:'♻️', t:'Greywater Reuse', d:'Toilet flushing, landscaping after basic treatment' },
+  ] : tds > 500 ? [
+    { e:'🌱', t:'Drip Irrigation', d:'Vegetable and crop irrigation' },
+    { e:'🚿', t:'Domestic Cleaning', d:'Floor, vehicle, utensil washing' },
+    { e:'💊', t:'Pharma Grade (post-RO)', d:'After RO treatment, suitable for lab use' },
+    { e:'🏭', t:'Industrial Processes', d:'Boiler feed, cooling towers' },
+    { e:'🐟', t:'Aquaculture', d:'Fish farming with correct pH management' },
+  ] : [
+    { e:'🚰', t:'Drinking Water', d:'Safe for direct consumption after disinfection' },
+    { e:'🍳', t:'Cooking & Food Prep', d:'Suitable for all culinary applications' },
+    { e:'🌱', t:'Hydroponics', d:'Ideal low-TDS water for nutrient solution mixing' },
+    { e:'💊', t:'Pharmaceutical', d:'Meets basic purity for lab and pharma use' },
+    { e:'🐟', t:'Aquariums', d:'Excellent water quality for aquatic life' },
+    { e:'☕', t:'Beverages', d:'Good mineral balance for tea, coffee brewing' },
+  ];
+
+  return `
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">🔬</span> WATER QUALITY ASSESSMENT</div>
+    <div class="assessment-text">
+      The ${source} sample shows <span class="${ph>=6.5&&ph<=8.5?'hl-good':ph>=6.0&&ph<=9.0?'hl-warn':'hl-bad'}">pH ${ph}</span> — ${ps.lbl.toLowerCase()} range — and 
+      <span class="${tds<=500?'hl-good':tds<=1000?'hl-warn':'hl-bad'}">TDS ${tds} ppm</span> — ${ts.lbl.toLowerCase()} quality.
+      ${ph < 6.5 ? `The acidic pH can leach heavy metals from pipes and irritate mucous membranes.` : ph > 8.5 ? `Alkaline pH indicates excessive mineral loading which can cause scaling and digestive issues.` : `pH is within WHO-recommended range.`}
+      ${tds > 1000 ? `TDS of ${tds} ppm significantly exceeds the WHO limit of 500 ppm, indicating high mineral/salt content unsafe for direct drinking.` : tds > 500 ? `TDS slightly exceeds WHO limit — RO or ion-exchange treatment advised.` : `TDS is within safe drinking water standards.`}
+      Computed Water Quality Index: <strong>${wqi}/100</strong>.
+    </div>
+  </div>
+
+  ${(ph < 6.5 || ph > 9.0 || tds > 1000) ?
+    `<div class="alert a-bad"><div class="alert-icon">⚠️</div><div><strong>Warning:</strong> Water with pH ${ph} and TDS ${tds} ppm is NOT safe for consumption without multi-stage treatment. Do not drink untreated.</div></div>` :
+    (tds > 500 || ph < 6.5 || ph > 8.5) ?
+    `<div class="alert a-warn"><div class="alert-icon">⚠️</div><div><strong>Caution:</strong> Basic treatment required. pH or TDS is outside optimal range. Follow purification steps below.</div></div>` :
+    `<div class="alert a-good"><div class="alert-icon">✅</div><div><strong>Good news:</strong> pH ${ph} and TDS ${tds} ppm are within safe parameters. Disinfection and filtration are still recommended as a precaution.</div></div>`
+  }
+
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">⚗️</span> PURIFICATION PROTOCOL — PRIORITY SEQUENCE</div>
+    <div class="step-list">
+      ${steps.map(s => `<div class="step"><div class="step-badge ${s.sb}">${s.n}</div><div class="step-info"><div class="step-name">${s.name} <span class="step-tag ${s.tag}">${s.type}</span></div><div class="step-desc">${s.desc}</div></div></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">💡</span> APPLICATIONS OF PURIFIED WATER</div>
+    <div class="uc-grid">
+      ${usecases.map(u => `<div class="uc-tile"><div class="uc-emoji">${u.e}</div><div class="uc-text"><strong>${u.t}</strong><span>${u.d}</span></div></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">📊</span> PARAMETER BENCHMARKING</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Parameter</th><th>Your Reading</th><th>WHO Standard</th><th>BIS (India)</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>pH</td><td class="${ph>=6.5&&ph<=8.5?'tv-good':ph>=6.0&&ph<=9.0?'tv-warn':'tv-bad'}">${ph}</td><td>6.5 – 8.5</td><td>6.5 – 8.5</td><td>${ph>=6.5&&ph<=8.5?'✅ Safe':'⚠️ Correction needed'}</td></tr>
+        <tr><td>TDS</td><td class="${tds<=500?'tv-good':tds<=1000?'tv-warn':'tv-bad'}">${tds} ppm</td><td>500 ppm</td><td>500 ppm (max 2000)</td><td>${tds<=500?'✅ Excellent':tds<=1000?'⚠️ Moderate':'❌ Exceeds limit'}</td></tr>
+        <tr><td>WQI Score</td><td class="${wqi>=70?'tv-good':wqi>=50?'tv-warn':'tv-bad'}">${wqi}/100</td><td>≥ 70 (Good)</td><td>≥ 65 (Acceptable)</td><td>${wqi>=70?'✅ Good':wqi>=50?'⚠️ Moderate':'❌ Poor'}</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">🩺</span> HEALTH RISK ANALYSIS</div>
+    <div class="assessment-text">
+      ${ph < 6.5 ? '<strong>Acidic water (pH '+ph+')</strong> can leach <span class=\"hl-bad\">lead, copper and iron</span> from pipes causing neurological damage especially in children. Chronic exposure linked to kidney disease and gastrointestinal disorders.' : ph > 8.5 ? '<strong>Alkaline water (pH '+ph+')</strong> can cause <span class=\"hl-warn\">gastrointestinal irritation</span>, skin issues, and metabolic alkalosis. Excess calcium/magnesium causes kidney stones over time.' : '<strong>pH '+ph+'</strong> is within safe range — <span class=\"hl-good\">no pH-related health risks</span> detected.'}
+      ${tds > 1000 ? '<br><br><strong>High TDS ('+tds+' ppm)</strong> indicates dangerous dissolved minerals — potential <span class=\"hl-bad\">arsenic, nitrates, fluoride or heavy metals</span>. WHO links high-TDS groundwater to <strong>fluorosis</strong> (bone deformity) and <strong>methemoglobinemia</strong> in infants. Similar conditions affect <strong>200 million Indians</strong>.' : tds > 500 ? '<br><br><strong>TDS '+tds+' ppm</strong> exceeds safe limit — <span class=\"hl-warn\">elevated mineral intake</span>. Long-term consumption linked to kidney stone formation and cardiovascular stress.' : '<br><br><strong>TDS '+tds+' ppm</strong> is within safe limits — <span class=\"hl-good\">mineral content acceptable</span>.'}
+    </div>
+  </div>
+
+  <div class="out-block">
+    <div class="out-title"><span class="ot-icon">💰</span> ECONOMIC IMPACT & COST-BENEFIT</div>
+    <div class="insight">
+      ${(ph < 6.5 || ph > 8.5 || tds > 500) ?
+        '<strong>Cost of NOT treating:</strong> Average Indian family spends ₹8,000–15,000/year on waterborne illness. India loses <strong>₹600 billion/year</strong> nationally in healthcare and productivity (World Bank 2023).<br><br><strong>Treatment cost:</strong> '+(scale==='large'?'Large-scale plant: <strong>₹15–40 per 1,000 L</strong>. For 500-person village (300 L/day): ~<strong>₹2,700/month</strong> operational cost vs ₹50,000+/month prevented illness. ROI: <strong>18:1</strong>.':'Household RO+UV: <strong>₹6,000–12,000 one-time</strong> + ₹500/month. Prevents ₹8,000–15,000/year in medical bills. Payback: <strong>under 12 months</strong>.')+'<br><br><strong>Government Schemes:</strong> <strong>Jal Jeevan Mission</strong> (₹3.6 lakh crore), <strong>AMRUT 2.0</strong>, <strong>NRCP</strong> available for funding.' :
+        'Water quality is acceptable. Basic filtration + UV: <strong>₹2–5 per 1,000 L</strong>. WHO estimates every <strong>₹1 invested</strong> in safe water returns <strong>₹4–12</strong> in economic benefits. Preventive treatment is always cost-positive.'
+      }
+    </div>
+  </div>`;
+}
+
+
+// ══ INPUT MODE: MANUAL / AUTOMATIC ══
+let _inputMode = 'manual';
+let _autoFetchTimer = null;
+let _autoRunning = false;
+
+function setMode(mode) {
+  _inputMode = mode;
+  const manualSec = document.getElementById('manual-sensor-section');
+  const autoPanel = document.getElementById('auto-mode-panel');
+  const btnManual = document.getElementById('btn-mode-manual');
+  const btnAuto   = document.getElementById('btn-mode-auto');
+
+  if (mode === 'manual') {
+    manualSec.style.display = '';
+    autoPanel.classList.remove('visible');
+    btnManual.className = 'mode-btn active-manual';
+    btnAuto.className   = 'mode-btn';
+    stopAutoFetch();
+  } else {
+    manualSec.style.display = 'none';
+    autoPanel.classList.add('visible');
+    btnManual.className = 'mode-btn';
+    btnAuto.className   = 'mode-btn active-auto';
+  }
+}
+
+function toggleAutoFetch() {
+  if (_autoRunning) { stopAutoFetch(); return; }
+  const interval = parseInt(document.getElementById('auto-interval').value);
+  const btn = document.getElementById('btn-auto-fetch');
+  const dot = document.getElementById('auto-dot');
+  const txt = document.getElementById('auto-status-text');
+  const chips = document.getElementById('auto-chips');
+
+  _autoRunning = true;
+  btn.textContent = '■ STOP POLLING';
+  btn.classList.add('running');
+  dot.classList.add('pulsing');
+  txt.textContent = 'Polling active — reading values…';
+  txt.className = 'auto-status-text active';
+  chips.style.display = 'flex';
+
+  function doFetch() {
+    const url = document.getElementById('auto-device-url').value.trim();
+    if (url) {
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          const phVal  = data.ph  ?? data.pH  ?? data.ph_value  ?? null;
+          const tdsVal = data.tds ?? data.TDS ?? data.tds_value ?? null;
+          if (phVal !== null) {
+            document.getElementById('auto-ph').value = parseFloat(phVal).toFixed(2);
+            document.getElementById('arc-ph').textContent = parseFloat(phVal).toFixed(2);
+          }
+          if (tdsVal !== null) {
+            document.getElementById('auto-tds').value = Math.round(tdsVal);
+            document.getElementById('arc-tds').textContent = Math.round(tdsVal);
+          }
+          txt.textContent = `Last fetched: ${new Date().toLocaleTimeString()}`;
+        })
+        .catch(() => {
+          txt.textContent = `⚠️ Fetch failed — check URL. Using last manual values.`;
+          txt.className = 'auto-status-text';
+          syncAutoToMain();
+        });
+    } else {
+      // No URL — just sync auto fields to main
+      syncAutoToMain();
+      txt.textContent = `Values synced at ${new Date().toLocaleTimeString()} (no URL — using above fields)`;
+    }
+    syncAutoToMain();
+    document.getElementById('arc-ph').textContent  = document.getElementById('auto-ph').value  || '—';
+    document.getElementById('arc-tds').textContent = document.getElementById('auto-tds').value || '—';
+  }
+
+  doFetch();
+  if (interval > 0) { _autoFetchTimer = setInterval(doFetch, interval); }
+}
+
+function stopAutoFetch() {
+  _autoRunning = false;
+  if (_autoFetchTimer) { clearInterval(_autoFetchTimer); _autoFetchTimer = null; }
+  const btn = document.getElementById('btn-auto-fetch');
+  const dot = document.getElementById('auto-dot');
+  const txt = document.getElementById('auto-status-text');
+  if (btn) { btn.textContent = '▶ START POLLING'; btn.classList.remove('running'); }
+  if (dot) { dot.classList.remove('pulsing'); }
+  if (txt) { txt.textContent = 'Stopped.'; txt.className = 'auto-status-text'; }
+}
+
+function syncAutoToMain() {
+  const ph  = document.getElementById('auto-ph').value;
+  const tds = document.getElementById('auto-tds').value;
+  if (ph)  document.getElementById('ph').value  = ph;
+  if (tds) document.getElementById('tds').value = tds;
+}
+
+// Patch the go() call to sync auto values first
+const _origAnalyze = window.go;
+window.go = function() {
+  if (_inputMode === 'auto') { syncAutoToMain(); }
+  _origAnalyze && _origAnalyze();
+};
+
+
+(function(){
+  try {
+    const k = localStorage.getItem('aqk');
+    if (k) {
+      window._AQ_KEY = k;
+      const inp = document.getElementById('apikey');
+      if (inp) {
+        inp.value = k;
+        const v = k.startsWith('sk-ant-') && k.length > 20;
+        const s = document.getElementById('kstat');
+        if (s) { s.textContent = v?'✅ SET':'⚠️ CHECK'; s.style.color = v?'#10b981':'#f59e0b'; }
+      }
+    }
+  } catch(e) {}
+})();
+
+// Floating water particles
+(function(){
+  const canvas = document.getElementById('particles');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, pts = [];
+  function resize(){ W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+  for(let i=0;i<55;i++) pts.push({
+    x: Math.random()*2000, y: Math.random()*1200,
+    r: Math.random()*1.8+0.3,
+    vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.3,
+    a: Math.random()*0.5+0.15,
+    c: Math.random()>0.5 ? '14,165,233' : '6,182,212'
+  });
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.c},${p.a})`;
+      ctx.fill();
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+    });
+    // draw faint connection lines
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<120){
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x,pts[i].y);
+          ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(14,165,233,${0.06*(1-dist/120)})`;
+          ctx.lineWidth=0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
